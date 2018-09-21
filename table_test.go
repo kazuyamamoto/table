@@ -18,10 +18,10 @@ type testRow struct {
 }
 
 var table = []byte(`
-string  | custom | int   | float | bool     | uint | escape | 文字列    
-------- | ------ | ----- | ----- | -------- | ---- | ------ | --------
-abc     | OK     | 302   | 1.234 | true     | 7890 | abc\nd | あいうえお  
-        | NG     | -0x20 | -5    | non-bool | 3333 | abc\\n | 日本語    
+string  | custom || int   | float | bool     | uint | escape | 文字列    
+------- | ------ || ----- | ----- | -------- | ---- | ------ | --------
+abc     | OK     || 302   | 1.234 | true     | 7890 | abc\nd | あいうえお  
+        | NG     || -0x20 | -5    | non-bool | 3333 | abc\\n | 日本語    
 `)
 
 var wantTable = []testRow{
@@ -196,6 +196,9 @@ func TestRow_isDelimiter(t *testing.T) {
 		{[]string{" - "}, true},
 		{[]string{"a"}, false},
 		{[]string{"a", "-"}, false},
+		{[]string{""}, true},
+		{[]string{"", "-"}, true},
+		{[]string{"", "a"}, false},
 	}
 
 	for i, tt := range tests {

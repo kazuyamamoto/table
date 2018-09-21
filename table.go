@@ -198,14 +198,6 @@ func readHeader(s *bufio.Scanner) (row, error) {
 		return nil, fmt.Errorf("parse header row: %v", err)
 	}
 
-	for i := 0; i < len(hdr); i++ {
-		t := strings.TrimSpace(hdr[i])
-		if t == "" {
-			return nil, errors.New("contains empty header name")
-		}
-		hdr[i] = t
-	}
-
 	return hdr, nil
 }
 
@@ -219,6 +211,10 @@ func parseRow(s string) (row, error) {
 
 	// TODO literal "\|"
 	sp := strings.Split(s, "|")
+	for i := 0; i < len(sp); i++ {
+		sp[i] = strings.TrimSpace(sp[i])
+	}
+
 	return sp, nil
 }
 
