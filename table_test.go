@@ -218,6 +218,19 @@ func TestRow_isDelimiter(t *testing.T) {
 	}
 }
 
+func TestRow_unescape(t *testing.T) {
+	sut := row{"a", "\\n", "\\\\"}
+	want := row{"a", "\n", "\\"}
+
+	if err := sut.unescape(); err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(sut, want) {
+		t.Fatalf("want %v, got %v", want, sut)
+	}
+}
+
 func TestUnmarshal_unescapeCustomString(t *testing.T) {
 	var tbl []testRowCustomString
 	if err := Unmarshal(table, &tbl); err != nil {

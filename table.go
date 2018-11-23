@@ -91,6 +91,11 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 			continue
 		}
 
+		err = r.unescape()
+		if err != nil {
+			return fmt.Errorf("unescape row: %v", err)
+		}
+
 		vStruct, err := unmarshalStruct(tStruct, hdr, r)
 		if err != nil {
 			return err
@@ -139,9 +144,7 @@ func unmarshalStruct(tStruct reflect.Type, hdr row, r row) (reflect.Value, error
 		// Unmarshal basic type values. Ignore unknown type values
 		switch vField.Kind() {
 		case reflect.String:
-			if s, err := unescape(s); err == nil {
-				vField.SetString(s)
-			}
+			vField.SetString(s)
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			if i, err := strconv.ParseInt(s, 0, 64); err == nil {
 				vField.SetInt(i)
@@ -162,34 +165,6 @@ func unmarshalStruct(tStruct reflect.Type, hdr row, r row) (reflect.Value, error
 	}
 
 	return vPointer, nil
-}
-
-// unescape unescapes escape-sequence.
-func unescape(s string) (string, error) {
-	return unescapeTailRec("", s)
-}
-
-func unescapeTailRec(unescaped string, escaped string) (string, error) {
-	i := strings.Index(escaped, "\\")
-	if i == -1 {
-		return unescaped + escaped, nil
-	}
-
-	if i+1 == len(escaped) {
-		return "", fmt.Errorf("contains invalid escape seuqence %q", escaped)
-	}
-
-	var lit string
-	switch escaped[i+1] {
-	case 'n':
-		lit = "\n"
-	case '\\':
-		lit = "\\"
-	default:
-		return "", fmt.Errorf("contains unsupported escape sequece %q", escaped)
-	}
-
-	return unescapeTailRec(unescaped+escaped[:i]+lit, escaped[i+2:])
 }
 
 func unmarshalHeader(scanner *bufio.Scanner) (row, error) {
@@ -249,4 +224,44 @@ func (r row) isDelimiter() bool {
 	}
 
 	return true
+}
+
+func (r *row) unescape() error {
+	for i := 0; i < len(*r); i++ {
+		unescaped, err := unescape((*r)[i])
+		if err != nil {
+			return fmt.Errorf("unescape value %q: %v", (*r)[i], err)
+		}
+
+		(*r)[i] = unescaped
+	}
+	return nil
+}
+
+// unescape unescapes escape-sequence.
+func unescape(s string) (string, error) {
+	return unescapeTailRec("", s)
+}
+
+func unescapeTailRec(unescaped string, escaped string) (string, error) {
+	i := strings.Index(escaped, "\\")
+	if i == -1 {
+		return unescaped + escaped, nil
+	}
+
+	if i+1 == len(escaped) {
+		return "", fmt.Errorf("contains invalid escape seuqence %q", escaped)
+	}
+
+	var lit string
+	switch escaped[i+1] {
+	case 'n':
+		lit = "\n"
+	case '\\':
+		lit = "\\"
+	default:
+		return "", fmt.Errorf("contains unsupported escape sequece %q", escaped)
+	}
+
+	return unescapeTailRec(unescaped+escaped[:i]+lit, escaped[i+2:])
 }
