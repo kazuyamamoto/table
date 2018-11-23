@@ -6,11 +6,11 @@
 //   abc     | OK     | 302   | 1.234 | true     | 7890 | abc\nd | あいうえお
 //           | NG     | -0x20 | -5    | non-bool | 3333 | abc\\n | 日本語
 //
-// First row is header. Rows filled with '-' is assumed as delimiters.
-// Those are ignored.
-//
-// Empty lines before header are ignored. Table ends with an empty line and
-// its following lines are ignored.
+// First row is header. A row filled with '-' is assumed as delimiter row.
+// It is ignored. Empty lines before header are ignored.
+// Table ends with an empty line and its following lines are ignored.
+// Values in table body are unescaped. Escape sequences are "\n"
+// (unescaped into CR) and "\\"(unescaped into \).
 package table
 
 import (
@@ -46,7 +46,8 @@ type Unmarshaler interface {
 	UnmarshalTable([]byte) error
 }
 
-// UnmarshalReader is like Unmarshal except for parsing data from io.Reader instead of []byte.
+// UnmarshalReader is like Unmarshal except for parsing data from io.Reader
+// instead of []byte.
 func UnmarshalReader(r io.Reader, v interface{}) error {
 	vPointer := reflect.ValueOf(v)
 	if vPointer.Kind() != reflect.Ptr {
@@ -212,6 +213,7 @@ func unmarshalHeader(scanner *bufio.Scanner) (row, error) {
 	return hdr, nil
 }
 
+// row represents a row of table.
 type row []string
 
 func unmarshalRow(s string) (row, error) {

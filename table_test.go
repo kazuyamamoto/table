@@ -18,6 +18,7 @@ type testRow struct {
 }
 
 var table = []byte(`
+
 string  | custom || int   | float | bool     | uint | escape | 文字列    
 ------- | ------ || ----- | ----- | -------- | ---- | ------ | --------
 abc     | OK     || 302   | 1.234 | true     | 7890 | abc\nd | あいうえお  
@@ -215,4 +216,30 @@ func TestRow_isDelimiter(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUnmarshal_unescapeCustomString(t *testing.T) {
+	var tbl []testRowCustomString
+	if err := Unmarshal(table, &tbl); err != nil {
+		t.Fatal(err)
+	}
+
+	if tbl[0].CustomString != customString("abc\nd") {
+		t.Fatalf("want %q, got %q", tbl[0].CustomString, "abc\nd")
+	}
+
+	if tbl[1].CustomString != customString("abc\\n") {
+		t.Fatalf("want %q, got %q", tbl[1].CustomString, "abc\\n")
+	}
+}
+
+type testRowCustomString struct {
+	CustomString customString `table:"escape"`
+}
+
+type customString string
+
+func (c *customString) UnmarshalTable(p []byte) error {
+	*c = customString(p)
+	return nil
 }
