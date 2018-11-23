@@ -1,13 +1,16 @@
-// Package table provides functionality to parse table string into slice of struct.
-// Table format is like that of lightweight markup language:
+// Package table provides functionality to parse table string into slice of
+// struct. Table format is like that of lightweight markup language:
 //
 //   string  | custom | int   | float | bool     | uint | escape | 文字列
 //   ------- | ------ | ----- | ----- | -------- | ---- | ------ | --------
 //   abc     | OK     | 302   | 1.234 | true     | 7890 | abc\nd | あいうえお
 //           | NG     | -0x20 | -5    | non-bool | 3333 | abc\\n | 日本語
 //
-// First row is header. A row filled with '-' is assumed as delimiter row.
-// Delimiter rows are ignored.
+// First row is header. Rows filled with '-' is assumed as delimiters.
+// Those are ignored.
+//
+// Empty lines before header are ignored. Table ends with an empty line and
+// its following lines are ignored.
 package table
 
 import (
@@ -61,27 +64,33 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 	}
 
 	scanner := bufio.NewScanner(r)
-	hdr, err := readHeader(scanner)
+	hdr, err := unmarshalHeader(scanner)
 	if err != nil {
 		return fmt.Errorf("read header: %v", err)
 	}
 
+	// table body
 	vSlice := vPointer.Elem()
 	for scanner.Scan() {
-		r, err := parseRow(scanner.Text())
+		t := strings.TrimSpace(scanner.Text())
+		if t == "" {
+			return nil
+		}
+
+		r, err := unmarshalRow(t)
 		if err != nil {
-			return fmt.Errorf("parse row: %v", err)
+			return fmt.Errorf("parse table body: %v", err)
 		}
 
 		if len(r) != len(hdr) {
-			return fmt.Errorf("number of columns: header %v, row %v", len(hdr), len(r))
+			return fmt.Errorf("#columns: header is %v but table body is %v", len(hdr), len(r))
 		}
 
 		if r.isDelimiter() {
 			continue
 		}
 
-		vStruct, err := unmarshalRow(tStruct, hdr, r)
+		vStruct, err := unmarshalStruct(tStruct, hdr, r)
 		if err != nil {
 			return err
 		}
@@ -95,7 +104,7 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 // unmarshalerType is an object of type of Unmarshaler.
 var unmarshalerType = reflect.TypeOf(new(Unmarshaler)).Elem()
 
-func unmarshalRow(tStruct reflect.Type, hdr row, r row) (reflect.Value, error) {
+func unmarshalStruct(tStruct reflect.Type, hdr row, r row) (reflect.Value, error) {
 	// Not using reflect.Zero for settability.
 	// See https://blog.golang.org/laws-of-reflection
 	vPointer := reflect.New(tStruct)
@@ -182,20 +191,20 @@ func unescapeTailRec(unescaped string, escaped string) (string, error) {
 	return unescapeTailRec(unescaped+escaped[:i]+lit, escaped[i+2:])
 }
 
-func readHeader(s *bufio.Scanner) (row, error) {
+func unmarshalHeader(scanner *bufio.Scanner) (row, error) {
 	// ignore empty lines
-	r := ""
-	for s.Scan() {
-		if r = strings.TrimSpace(s.Text()); r != "" {
+	s := ""
+	for scanner.Scan() {
+		if s = strings.TrimSpace(scanner.Text()); s != "" {
 			break
 		}
 	}
 
-	if r == "" {
+	if s == "" {
 		return nil, errors.New("no header")
 	}
 
-	hdr, err := parseRow(r)
+	hdr, err := unmarshalRow(s)
 	if err != nil {
 		return nil, fmt.Errorf("parse header row: %v", err)
 	}
@@ -205,7 +214,7 @@ func readHeader(s *bufio.Scanner) (row, error) {
 
 type row []string
 
-func parseRow(s string) (row, error) {
+func unmarshalRow(s string) (row, error) {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return nil, nil

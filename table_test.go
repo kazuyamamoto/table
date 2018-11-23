@@ -22,6 +22,9 @@ string  | custom || int   | float | bool     | uint | escape | 文字列
 ------- | ------ || ----- | ----- | -------- | ---- | ------ | --------
 abc     | OK     || 302   | 1.234 | true     | 7890 | abc\nd | あいうえお  
         | NG     || -0x20 | -5    | non-bool | 3333 | abc\\n | 日本語    
+
+ignored lines...
+
 `)
 
 var wantTable = []testRow{
@@ -107,7 +110,11 @@ func TestUnmarshaler(t *testing.T) {
 		t.Fatal()
 	}
 
-	sut.UnmarshalTable([]byte("OK"))
+	err := sut.UnmarshalTable([]byte("OK"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if !sut {
 		t.Fatal("UnmarshalTable(OK) should be true")
 	}
@@ -172,7 +179,7 @@ func TestParseRow(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			got, err := parseRow(tt.s)
+			got, err := unmarshalRow(tt.s)
 			if err != nil {
 				t.Fatal(err)
 			}
