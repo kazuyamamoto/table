@@ -6,11 +6,11 @@
 //   abc     | OK     | 302   | 1.234 | true     | 7890 | abc\nd | あいうえお
 //           | NG     | -0x20 | -5    | non-bool | 3333 | abc\\n | 日本語
 //
-// First row is header. Rows filled with '-' is assumed as delimiters.
-// Those are ignored.
-//
-// Empty lines before header are ignored. Table ends with an empty line and
-// its following lines are ignored.
+// First row is header. A row filled with '-' is assumed as delimiter row.
+// It is ignored. Empty lines before header are ignored.
+// Table ends with an empty line and its following lines are ignored.
+// Values in table body are unescaped. Escape sequences are "\n"
+// (unescaped into CR) and "\\"(unescaped into \).
 package table
 
 import (
@@ -46,7 +46,8 @@ type Unmarshaler interface {
 	UnmarshalTable([]byte) error
 }
 
-// UnmarshalReader is like Unmarshal except for parsing data from io.Reader instead of []byte.
+// UnmarshalReader is like Unmarshal except for parsing data from io.Reader
+// instead of []byte.
 func UnmarshalReader(r io.Reader, v interface{}) error {
 	vPointer := reflect.ValueOf(v)
 	if vPointer.Kind() != reflect.Ptr {
@@ -88,6 +89,11 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 
 		if r.isDelimiter() {
 			continue
+		}
+
+		err = r.unescape()
+		if err != nil {
+			return fmt.Errorf("unescape row: %v", err)
 		}
 
 		vStruct, err := unmarshalStruct(tStruct, hdr, r)
@@ -138,9 +144,7 @@ func unmarshalStruct(tStruct reflect.Type, hdr row, r row) (reflect.Value, error
 		// Unmarshal basic type values. Ignore unknown type values
 		switch vField.Kind() {
 		case reflect.String:
-			if s, err := unescape(s); err == nil {
-				vField.SetString(s)
-			}
+			vField.SetString(s)
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			if i, err := strconv.ParseInt(s, 0, 64); err == nil {
 				vField.SetInt(i)
@@ -161,34 +165,6 @@ func unmarshalStruct(tStruct reflect.Type, hdr row, r row) (reflect.Value, error
 	}
 
 	return vPointer, nil
-}
-
-// unescape unescapes escape-sequence.
-func unescape(s string) (string, error) {
-	return unescapeTailRec("", s)
-}
-
-func unescapeTailRec(unescaped string, escaped string) (string, error) {
-	i := strings.Index(escaped, "\\")
-	if i == -1 {
-		return unescaped + escaped, nil
-	}
-
-	if i+1 == len(escaped) {
-		return "", fmt.Errorf("contains invalid escape seuqence %q", escaped)
-	}
-
-	var lit string
-	switch escaped[i+1] {
-	case 'n':
-		lit = "\n"
-	case '\\':
-		lit = "\\"
-	default:
-		return "", fmt.Errorf("contains unsupported escape sequece %q", escaped)
-	}
-
-	return unescapeTailRec(unescaped+escaped[:i]+lit, escaped[i+2:])
 }
 
 func unmarshalHeader(scanner *bufio.Scanner) (row, error) {
@@ -212,6 +188,7 @@ func unmarshalHeader(scanner *bufio.Scanner) (row, error) {
 	return hdr, nil
 }
 
+// row represents a row of table.
 type row []string
 
 func unmarshalRow(s string) (row, error) {
@@ -247,4 +224,44 @@ func (r row) isDelimiter() bool {
 	}
 
 	return true
+}
+
+func (r *row) unescape() error {
+	for i := 0; i < len(*r); i++ {
+		unescaped, err := unescape((*r)[i])
+		if err != nil {
+			return fmt.Errorf("unescape value %q: %v", (*r)[i], err)
+		}
+
+		(*r)[i] = unescaped
+	}
+	return nil
+}
+
+// unescape unescapes escape-sequence.
+func unescape(s string) (string, error) {
+	return unescapeTailRec("", s)
+}
+
+func unescapeTailRec(unescaped string, escaped string) (string, error) {
+	i := strings.Index(escaped, "\\")
+	if i == -1 {
+		return unescaped + escaped, nil
+	}
+
+	if i+1 == len(escaped) {
+		return "", fmt.Errorf("contains invalid escape seuqence %q", escaped)
+	}
+
+	var lit string
+	switch escaped[i+1] {
+	case 'n':
+		lit = "\n"
+	case '\\':
+		lit = "\\"
+	default:
+		return "", fmt.Errorf("contains unsupported escape sequece %q", escaped)
+	}
+
+	return unescapeTailRec(unescaped+escaped[:i]+lit, escaped[i+2:])
 }
