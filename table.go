@@ -1,10 +1,13 @@
 // Package table provides functionality to parse table string into slice of struct.
-// Table format is like that of lightweight markup language.
+// Table format is like that of lightweight markup language:
 //
 //   string  | custom | int   | float | bool     | uint | escape | 文字列
 //   ------- | ------ | ----- | ----- | -------- | ---- | ------ | --------
 //   abc     | OK     | 302   | 1.234 | true     | 7890 | abc\nd | あいうえお
 //           | NG     | -0x20 | -5    | non-bool | 3333 | abc\\n | 日本語
+//
+// First row is header. A row filled with '-' is assumed as delimiter row.
+// Delimiter rows are ignored.
 package table
 
 import (
@@ -18,9 +21,8 @@ import (
 	"strings"
 )
 
-// Unmarshal parses r as table string then sets parsed values to v.
+// Unmarshal parses r as table string then sets parsed objects to v.
 // If v is not a pointer to slice of struct, Unmarshal returns non-nil error.
-// First row is header. Delimiter rows are ignored.
 // When parsing an element in table string is failed, its value in v is zero.
 // Headers are bound to struct field tags.
 // Tag format is as follows:
@@ -43,18 +45,18 @@ type Unmarshaler interface {
 
 // UnmarshalReader is like Unmarshal except for parsing data from io.Reader instead of []byte.
 func UnmarshalReader(r io.Reader, v interface{}) error {
-	vptr := reflect.ValueOf(v)
-	if vptr.Kind() != reflect.Ptr {
+	vPointer := reflect.ValueOf(v)
+	if vPointer.Kind() != reflect.Ptr {
 		return errors.New("value of interface{} is not a pointer")
 	}
 
-	tslc := vptr.Type().Elem()
-	if tslc.Kind() != reflect.Slice {
+	tSlice := vPointer.Type().Elem()
+	if tSlice.Kind() != reflect.Slice {
 		return errors.New("value of interface{} is not a pointer of slice")
 	}
 
-	tstr := tslc.Elem()
-	if tstr.Kind() != reflect.Struct {
+	tStruct := tSlice.Elem()
+	if tStruct.Kind() != reflect.Struct {
 		return errors.New("value of interface{} is not a pointer of slice of struct")
 	}
 
@@ -64,7 +66,7 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 		return fmt.Errorf("read header: %v", err)
 	}
 
-	vslc := vptr.Elem()
+	vSlice := vPointer.Elem()
 	for scanner.Scan() {
 		r, err := parseRow(scanner.Text())
 		if err != nil {
@@ -79,12 +81,12 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 			continue
 		}
 
-		vstr, err := unmarshalRow(tstr, hdr, r)
+		vStruct, err := unmarshalRow(tStruct, hdr, r)
 		if err != nil {
 			return err
 		}
 
-		vslc.Set(reflect.Append(vslc, vstr.Elem()))
+		vSlice.Set(reflect.Append(vSlice, vStruct.Elem()))
 	}
 
 	return nil
@@ -93,63 +95,63 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 // unmarshalerType is an object of type of Unmarshaler.
 var unmarshalerType = reflect.TypeOf(new(Unmarshaler)).Elem()
 
-func unmarshalRow(tstr reflect.Type, hdr row, r row) (reflect.Value, error) {
+func unmarshalRow(tStruct reflect.Type, hdr row, r row) (reflect.Value, error) {
 	// Not using reflect.Zero for settability.
 	// See https://blog.golang.org/laws-of-reflection
-	vstr := reflect.New(tstr)
-	for fidx := 0; fidx < vstr.Elem().NumField(); fidx++ {
-		vfld := vstr.Elem().Field(fidx)
-		tfld := tstr.Field(fidx)
-		tag := tfld.Tag.Get("table")
+	vPointer := reflect.New(tStruct)
+	for fi := 0; fi < vPointer.Elem().NumField(); fi++ {
+		vField := vPointer.Elem().Field(fi)
+		tField := tStruct.Field(fi)
+		tag := tField.Tag.Get("table")
 		if tag == "" {
 			continue
 		}
 
-		tidx := hdr.index(tag)
-		if tidx == -1 {
+		ti := hdr.index(tag)
+		if ti == -1 {
 			continue
 		}
 
-		s := strings.TrimSpace(r[tidx])
+		s := strings.TrimSpace(r[ti])
 
 		// Unmarshal Unmarshaler implementation
-		if reflect.PtrTo(tfld.Type).Implements(unmarshalerType) {
+		if reflect.PtrTo(tField.Type).Implements(unmarshalerType) {
 			// calls Addr() for pointer receiver
-			m := vfld.Addr().MethodByName("UnmarshalTable")
-			verr := m.Call([]reflect.Value{reflect.ValueOf([]byte(s))})
-			if len(verr) > 0 && !verr[0].IsNil() {
-				return reflect.Value{}, verr[0].Interface().(error)
+			m := vField.Addr().MethodByName("UnmarshalTable")
+			vReturns := m.Call([]reflect.Value{reflect.ValueOf([]byte(s))})
+			if len(vReturns) > 0 && !vReturns[0].IsNil() {
+				return reflect.Value{}, vReturns[0].Interface().(error)
 			}
 
 			continue
 		}
 
 		// Unmarshal basic type values. Ignore unknown type values
-		switch vfld.Kind() {
+		switch vField.Kind() {
 		case reflect.String:
 			if s, err := unescape(s); err == nil {
-				vfld.SetString(s)
+				vField.SetString(s)
 			}
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			if i, err := strconv.ParseInt(s, 0, 64); err == nil {
-				vfld.SetInt(i)
+				vField.SetInt(i)
 			}
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			if i, err := strconv.ParseUint(s, 10, 64); err == nil {
-				vfld.SetUint(i)
+				vField.SetUint(i)
 			}
 		case reflect.Bool:
 			if b, err := strconv.ParseBool(s); err == nil {
-				vfld.SetBool(b)
+				vField.SetBool(b)
 			}
 		case reflect.Float32, reflect.Float64:
 			if f, err := strconv.ParseFloat(s, 64); err == nil {
-				vfld.SetFloat(f)
+				vField.SetFloat(f)
 			}
 		}
 	}
 
-	return vstr, nil
+	return vPointer, nil
 }
 
 // unescape unescapes escape-sequence.
