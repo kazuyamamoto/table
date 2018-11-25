@@ -170,8 +170,6 @@ func TestParseRow(t *testing.T) {
 		s    string
 		want row
 	}{
-		{"", nil},
-		{" ", nil},
 		{"a", row{"a"}},
 		{"a|b", row{"a", "b"}},
 		{"|a|b", row{"", "a", "b"}},

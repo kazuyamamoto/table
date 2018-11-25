@@ -192,11 +192,6 @@ func unmarshalHeader(scanner *bufio.Scanner) (row, error) {
 type row []string
 
 func unmarshalRow(s string) (row, error) {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return nil, nil
-	}
-
 	// TODO literal "\|"
 	sp := strings.Split(s, "|")
 	for i := 0; i < len(sp); i++ {
