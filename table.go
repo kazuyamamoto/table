@@ -91,11 +91,11 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 			continue
 		}
 
-		err = r.unescape()
-		if err != nil {
-			return fmt.Errorf("unescape row: %v", err)
-		}
-
+		// err = r.unescape()
+		// if err != nil {
+		// 	return fmt.Errorf("unescape row: %v", err)
+		// }
+		//
 		vStruct, err := unmarshalStruct(tStruct, hdr, r)
 		if err != nil {
 			return err
