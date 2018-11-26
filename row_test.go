@@ -16,6 +16,7 @@ func TestUnmarshalRow(t *testing.T) {
 		{"|a|b", row{"", "a", "b"}},
 		{"a|b|", row{"a", "b", ""}},
 		{"\\|", row{"\\|"}},
+		{"||\\||", row{"", "", "\\|", ""}},
 	}
 
 	for i, tt := range tests {
