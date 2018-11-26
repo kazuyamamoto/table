@@ -25,6 +25,10 @@ func unmarshalRow(s string) (row, error) {
 func columnDelimiterIndex(s string) int {
 	start := 0
 	for {
+		if start > len(s) {
+			return -1
+		}
+
 		target := s[start:]
 		i := strings.Index(target, "|")
 		if i == -1 {
@@ -32,7 +36,7 @@ func columnDelimiterIndex(s string) int {
 		}
 
 		if i >= 1 && target[i-1] == '\\' {
-			start = i + 1
+			start = start + i + 1
 			continue
 		}
 

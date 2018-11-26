@@ -16,18 +16,19 @@ func TestUnmarshalRow(t *testing.T) {
 		{"|a|b", row{"", "a", "b"}},
 		{"a|b|", row{"a", "b", ""}},
 		{"\\|", row{"\\|"}},
-		{"||\\||", row{"", "", "\\|", ""}},
+		{"||\\||\\|", row{"", "", "\\|", "\\|"}},
+		{"\\|\\\\n\\|", row{"\\|\\\\n\\|"}},
 	}
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			got, err := unmarshalRow(tt.s)
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("want %v, got %v", tt.want, got)
+				t.Errorf("want %v, got %v", tt.want, got)
 			}
 		})
 	}

@@ -19,10 +19,10 @@ type testRow struct {
 
 var table = []byte(`
 
-string  | custom || int   | float | bool     | uint | escape | 文字列    
-------- | ------ || ----- | ----- | -------- | ---- | ------ | --------
-abc     | OK     || 302   | 1.234 | true     | 7890 | abc\nd | あいうえお  
-        | NG     || -0x20 | -5    | non-bool | 3333 | \\n\|  | 日本語    
+string  | custom || int   | float | bool     | uint | escape  | 文字列    
+------- | ------ || ----- | ----- | -------- | ---- | ------- | --------
+abc     | OK     || 302   | 1.234 | true     | 7890 | abc\nd  | あいうえお  
+        | NG     || -0x20 | -5    | non-bool | 3333 | \|\\n\| | 日本語    
 
 ignored lines...
 
@@ -47,7 +47,7 @@ var wantTable = []testRow{
 		String:    "",
 		Mojiretsu: "日本語",
 		Custom:    false,
-		Escape:    "\\n|",
+		Escape:    "|\\n|",
 	},
 }
 
@@ -132,7 +132,7 @@ func TestUnmarshal_unescapeCustomString(t *testing.T) {
 		t.Fatalf("want %q, got %q", want, tbl[0].CustomString)
 	}
 
-	want = customString("\\n|")
+	want = customString("|\\n|")
 	if tbl[1].CustomString != want {
 		t.Fatalf("want %q, got %q", want, tbl[1].CustomString)
 	}
