@@ -9,13 +9,35 @@ import (
 type row []string
 
 func unmarshalRow(s string) (row, error) {
-	// TODO literal "\|"
-	sp := strings.Split(s, "|")
-	for i := 0; i < len(sp); i++ {
-		sp[i] = strings.TrimSpace(sp[i])
-	}
+	var r row
+	remainder := s
+	for {
+		i := columnDelimiterIndex(remainder)
+		if i == -1 {
+			return append(r, strings.TrimSpace(remainder)), nil
+		}
 
-	return sp, nil
+		r = append(r, strings.TrimSpace(remainder[:i]))
+		remainder = remainder[i+1:]
+	}
+}
+
+func columnDelimiterIndex(s string) int {
+	start := 0
+	for {
+		target := s[start:]
+		i := strings.Index(target, "|")
+		if i == -1 {
+			return -1
+		}
+
+		if i >= 1 && target[i-1] == '\\' {
+			start = i + 1
+			continue
+		}
+
+		return start + i
+	}
 }
 
 func (r row) index(v string) int {
@@ -75,6 +97,8 @@ func unescapeTailRec(unescaped string, escaped string) (string, error) {
 		lit = "\n"
 	case '\\':
 		lit = "\\"
+	case '|':
+		lit = "|"
 	default:
 		return "", fmt.Errorf("contains unsupported escape sequece %q", escaped)
 	}

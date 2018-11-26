@@ -22,7 +22,7 @@ var table = []byte(`
 string  | custom || int   | float | bool     | uint | escape | 文字列    
 ------- | ------ || ----- | ----- | -------- | ---- | ------ | --------
 abc     | OK     || 302   | 1.234 | true     | 7890 | abc\nd | あいうえお  
-        | NG     || -0x20 | -5    | non-bool | 3333 | abc\\n | 日本語    
+        | NG     || -0x20 | -5    | non-bool | 3333 | \\n\|  | 日本語    
 
 ignored lines...
 
@@ -47,7 +47,7 @@ var wantTable = []testRow{
 		String:    "",
 		Mojiretsu: "日本語",
 		Custom:    false,
-		Escape:    "abc\\n",
+		Escape:    "\\n|",
 	},
 }
 
@@ -127,12 +127,14 @@ func TestUnmarshal_unescapeCustomString(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	want := customString("abc\nd")
 	if tbl[0].CustomString != customString("abc\nd") {
-		t.Fatalf("want %q, got %q", tbl[0].CustomString, "abc\nd")
+		t.Fatalf("want %q, got %q", want, tbl[0].CustomString)
 	}
 
-	if tbl[1].CustomString != customString("abc\\n") {
-		t.Fatalf("want %q, got %q", tbl[1].CustomString, "abc\\n")
+	want = customString("\\n|")
+	if tbl[1].CustomString != want {
+		t.Fatalf("want %q, got %q", want, tbl[1].CustomString)
 	}
 }
 

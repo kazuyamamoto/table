@@ -4,13 +4,13 @@
 //   string  | custom | int   | float | bool     | uint | escape | 文字列
 //   ------- | ------ | ----- | ----- | -------- | ---- | ------ | --------
 //   abc     | OK     | 302   | 1.234 | true     | 7890 | abc\nd | あいうえお
-//           | NG     | -0x20 | -5    | non-bool | 3333 | abc\\n | 日本語
+//           | NG     | -0x20 | -5    | non-bool | 3333 | \\n\|  | 日本語
 //
 // First row is header. A row filled with '-' is assumed as delimiter row.
 // It is ignored. Empty lines before header are ignored.
 // Table ends with an empty line and its following lines are ignored.
 // Values in table body are unescaped. Escape sequences are "\n"
-// (unescaped into CR) and "\\"(unescaped into \).
+// (unescaped into CR), "\\"(\), and "\|"(|).
 package table
 
 import (

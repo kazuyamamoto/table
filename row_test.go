@@ -15,6 +15,7 @@ func TestUnmarshalRow(t *testing.T) {
 		{"a|b", row{"a", "b"}},
 		{"|a|b", row{"", "a", "b"}},
 		{"a|b|", row{"a", "b", ""}},
+		{"\\|", row{"\\|"}},
 	}
 
 	for i, tt := range tests {
@@ -81,6 +82,7 @@ func TestUnescape(t *testing.T) {
 		{`\\`, "\\"},
 		{`\n\n`, "\n\n"},
 		{`a\nb\nc`, "a\nb\nc"},
+		{`\|`, "|"},
 	}
 
 	for _, tt := range tests {
@@ -100,7 +102,6 @@ func TestUnescape(t *testing.T) {
 func TestUnescape_error(t *testing.T) {
 	tests := []string{
 		`\r`,
-		`\|`,
 		`\`,
 	}
 
