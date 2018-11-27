@@ -32,7 +32,7 @@ func ParseRow(s string) (Row, error) {
 				cell.WriteRune(r)
 				escaping = false
 			} else {
-				row = append(row, strings.TrimSpace(cell.String()))
+				row = append(row, trim(cell.String()))
 				cell.Reset()
 			}
 		default:
@@ -43,10 +43,10 @@ func ParseRow(s string) (Row, error) {
 		}
 	}
 
-	return append(row, strings.TrimSpace(cell.String())), nil
+	return append(row, trim(cell.String())), nil
 }
 
-// Index returns index of cell whose value matches v.
+// Index returns index of cell whose value equals v.
 // Returns -1 if not found.
 func (r Row) Index(v string) int {
 	for i, e := range r {
@@ -72,4 +72,8 @@ func (r Row) IsDelimiter() bool {
 
 func isNotDelimiter(r rune) bool {
 	return r != '-'
+}
+
+func trim(s string) string {
+	return strings.Trim(s, " \t")
 }

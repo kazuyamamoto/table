@@ -19,6 +19,7 @@ func TestParseRow(t *testing.T) {
 		{"||\\||\\||", Row{"", "", "|", "|", ""}},
 		{"\\|\\\\n\\|", Row{"|\\n|"}},
 		{"\\\\|", Row{"\\", ""}},
+		{"\\n", Row{"\n"}},
 	}
 
 	for i, tt := range tests {
