@@ -78,7 +78,7 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 			return nil
 		}
 
-		r, err := unmarshalRow(t)
+		r, err := ParseRow(t)
 		if err != nil {
 			return fmt.Errorf("parse table body: %v", err)
 		}
@@ -87,13 +87,13 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 			return fmt.Errorf("#columns: header is %v but table body is %v", len(hdr), len(r))
 		}
 
-		if r.isDelimiter() {
+		if r.IsDelimiter() {
 			continue
 		}
 
 		// err = r.unescape()
 		// if err != nil {
-		// 	return fmt.Errorf("unescape row: %v", err)
+		// 	return fmt.Errorf("unescape Row: %v", err)
 		// }
 		//
 		vStruct, err := unmarshalStruct(tStruct, hdr, r)
@@ -110,7 +110,7 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 // unmarshalerType is an object of type of Unmarshaler.
 var unmarshalerType = reflect.TypeOf(new(Unmarshaler)).Elem()
 
-func unmarshalStruct(tStruct reflect.Type, hdr row, r row) (reflect.Value, error) {
+func unmarshalStruct(tStruct reflect.Type, hdr, r Row) (reflect.Value, error) {
 	// Not using reflect.Zero for settability.
 	// See https://blog.golang.org/laws-of-reflection
 	vPointer := reflect.New(tStruct)
@@ -122,7 +122,7 @@ func unmarshalStruct(tStruct reflect.Type, hdr row, r row) (reflect.Value, error
 			continue
 		}
 
-		ti := hdr.index(tag)
+		ti := hdr.Index(tag)
 		if ti == -1 {
 			continue
 		}
@@ -167,7 +167,7 @@ func unmarshalStruct(tStruct reflect.Type, hdr row, r row) (reflect.Value, error
 	return vPointer, nil
 }
 
-func unmarshalHeader(scanner *bufio.Scanner) (row, error) {
+func unmarshalHeader(scanner *bufio.Scanner) (Row, error) {
 	// ignore empty lines
 	s := ""
 	for scanner.Scan() {
@@ -180,7 +180,7 @@ func unmarshalHeader(scanner *bufio.Scanner) (row, error) {
 		return nil, errors.New("no header")
 	}
 
-	hdr, err := unmarshalRow(s)
+	hdr, err := ParseRow(s)
 	if err != nil {
 		return nil, fmt.Errorf("parse header row: %v", err)
 	}
