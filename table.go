@@ -4,13 +4,13 @@
 //   string  | custom | int   | float | bool     | uint | escape | 文字列
 //   ------- | ------ | ----- | ----- | -------- | ---- | ------ | --------
 //   abc     | OK     | 302   | 1.234 | true     | 7890 | abc\nd | あいうえお
-//           | NG     | -0x20 | -5    | non-bool | 3333 | abc\\n | 日本語
+//           | NG     | -0x20 | -5    | non-bool | 3333 | \\n\|  | 日本語
 //
 // First row is header. A row filled with '-' is assumed as delimiter row.
 // It is ignored. Empty lines before header are ignored.
 // Table ends with an empty line and its following lines are ignored.
 // Values in table body are unescaped. Escape sequences are "\n"
-// (unescaped into CR) and "\\"(unescaped into \).
+// (unescaped into CR), "\\"(\), and "\|"(|).
 package table
 
 import (
@@ -78,7 +78,7 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 			return nil
 		}
 
-		r, err := unmarshalRow(t)
+		r, err := ParseRow(t)
 		if err != nil {
 			return fmt.Errorf("parse table body: %v", err)
 		}
@@ -87,15 +87,15 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 			return fmt.Errorf("#columns: header is %v but table body is %v", len(hdr), len(r))
 		}
 
-		if r.isDelimiter() {
+		if r.IsDelimiter() {
 			continue
 		}
 
-		err = r.unescape()
-		if err != nil {
-			return fmt.Errorf("unescape row: %v", err)
-		}
-
+		// err = r.unescape()
+		// if err != nil {
+		// 	return fmt.Errorf("unescape Row: %v", err)
+		// }
+		//
 		vStruct, err := unmarshalStruct(tStruct, hdr, r)
 		if err != nil {
 			return err
@@ -110,7 +110,7 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 // unmarshalerType is an object of type of Unmarshaler.
 var unmarshalerType = reflect.TypeOf(new(Unmarshaler)).Elem()
 
-func unmarshalStruct(tStruct reflect.Type, hdr row, r row) (reflect.Value, error) {
+func unmarshalStruct(tStruct reflect.Type, hdr, r Row) (reflect.Value, error) {
 	// Not using reflect.Zero for settability.
 	// See https://blog.golang.org/laws-of-reflection
 	vPointer := reflect.New(tStruct)
@@ -122,7 +122,7 @@ func unmarshalStruct(tStruct reflect.Type, hdr row, r row) (reflect.Value, error
 			continue
 		}
 
-		ti := hdr.index(tag)
+		ti := hdr.Index(tag)
 		if ti == -1 {
 			continue
 		}
@@ -167,7 +167,7 @@ func unmarshalStruct(tStruct reflect.Type, hdr row, r row) (reflect.Value, error
 	return vPointer, nil
 }
 
-func unmarshalHeader(scanner *bufio.Scanner) (row, error) {
+func unmarshalHeader(scanner *bufio.Scanner) (Row, error) {
 	// ignore empty lines
 	s := ""
 	for scanner.Scan() {
@@ -180,88 +180,10 @@ func unmarshalHeader(scanner *bufio.Scanner) (row, error) {
 		return nil, errors.New("no header")
 	}
 
-	hdr, err := unmarshalRow(s)
+	hdr, err := ParseRow(s)
 	if err != nil {
 		return nil, fmt.Errorf("parse header row: %v", err)
 	}
 
 	return hdr, nil
-}
-
-// row represents a row of table.
-type row []string
-
-func unmarshalRow(s string) (row, error) {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return nil, nil
-	}
-
-	// TODO literal "\|"
-	sp := strings.Split(s, "|")
-	for i := 0; i < len(sp); i++ {
-		sp[i] = strings.TrimSpace(sp[i])
-	}
-
-	return sp, nil
-}
-
-func (r row) index(v string) int {
-	for i, e := range r {
-		if e == v {
-			return i
-		}
-	}
-
-	return -1
-}
-
-func (r row) isDelimiter() bool {
-	for _, e := range r {
-		if strings.IndexFunc(strings.TrimSpace(e), func(r rune) bool { return r != '-' }) != -1 {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (r *row) unescape() error {
-	for i := 0; i < len(*r); i++ {
-		unescaped, err := unescape((*r)[i])
-		if err != nil {
-			return fmt.Errorf("unescape value %q: %v", (*r)[i], err)
-		}
-
-		(*r)[i] = unescaped
-	}
-	return nil
-}
-
-// unescape unescapes escape-sequence.
-func unescape(s string) (string, error) {
-	return unescapeTailRec("", s)
-}
-
-func unescapeTailRec(unescaped string, escaped string) (string, error) {
-	i := strings.Index(escaped, "\\")
-	if i == -1 {
-		return unescaped + escaped, nil
-	}
-
-	if i+1 == len(escaped) {
-		return "", fmt.Errorf("contains invalid escape seuqence %q", escaped)
-	}
-
-	var lit string
-	switch escaped[i+1] {
-	case 'n':
-		lit = "\n"
-	case '\\':
-		lit = "\\"
-	default:
-		return "", fmt.Errorf("contains unsupported escape sequece %q", escaped)
-	}
-
-	return unescapeTailRec(unescaped+escaped[:i]+lit, escaped[i+2:])
 }
