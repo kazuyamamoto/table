@@ -5,12 +5,12 @@ import (
 	"strings"
 )
 
-// Row represents a row of table.
-type Row []string
+// row represents a row of table.
+type row []string
 
-// ParseRow parses row string.
-func ParseRow(s string) (Row, error) {
-	var row Row
+// parseRow parses row string.
+func parseRow(s string) (row, error) {
+	var row row
 	escaping := false
 	cell := strings.Builder{}
 	for _, r := range s {
@@ -46,9 +46,9 @@ func ParseRow(s string) (Row, error) {
 	return append(row, trim(cell.String())), nil
 }
 
-// Index returns index of cell whose value equals v.
+// index returns index of cell whose value equals v.
 // Returns -1 if not found.
-func (r Row) Index(v string) int {
+func (r row) index(v string) int {
 	for i, e := range r {
 		if e == v {
 			return i
@@ -58,9 +58,9 @@ func (r Row) Index(v string) int {
 	return -1
 }
 
-// IsDelimiter returns true if r is a delimiter row.
+// isDelimiter returns true if r is a delimiter row.
 // Delimiter row is consist of sequence of '-' and whitespaces.
-func (r Row) IsDelimiter() bool {
+func (r row) isDelimiter() bool {
 	for _, e := range r {
 		if strings.IndexFunc(strings.TrimSpace(e), isNotDelimiter) != -1 {
 			return false
