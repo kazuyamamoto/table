@@ -1,16 +1,16 @@
-// Package table provides functionality to parse table string into slice of
-// struct. Table format is like that of lightweight markup language:
+// Package table provides functionality to unmarshal table string into slice of
+// struct. Table format is like those of lightweight markup languages:
 //
 //   string  | custom | int   | float | bool     | uint | escape | 文字列
 //   ------- | ------ | ----- | ----- | -------- | ---- | ------ | --------
 //   abc     | OK     | 302   | 1.234 | true     | 7890 | abc\nd | あいうえお
 //           | NG     | -0x20 | -5    | non-bool | 3333 | \\n\|  | 日本語
 //
-// First row is header. A row filled with '-' is assumed as delimiter row.
+// First row is header. A row filled with '-' is assumed as delimiter.
 // It is ignored. Empty lines before header are ignored.
-// Table ends with an empty line and its following lines are ignored.
-// Values in table body are unescaped. Escape sequences are "\n"
-// (unescaped into CR), "\\"(\), and "\|"(|).
+// Table ends with an empty line. Its following lines are ignored.
+// Values in table body are unescaped while unmarshaling.
+// Escape sequences are "\n" (unescaped into LF), "\\"(\), and "\|"(|).
 package table
 
 import (
@@ -65,7 +65,7 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 	}
 
 	scanner := bufio.NewScanner(r)
-	hdr, err := unmarshalHeader(scanner)
+	hdr, err := parseHeader(scanner)
 	if err != nil {
 		return fmt.Errorf("read header: %v", err)
 	}
@@ -91,11 +91,6 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 			continue
 		}
 
-		// err = r.unescape()
-		// if err != nil {
-		// 	return fmt.Errorf("unescape Row: %v", err)
-		// }
-		//
 		vStruct, err := unmarshalStruct(tStruct, hdr, r)
 		if err != nil {
 			return err
@@ -167,7 +162,7 @@ func unmarshalStruct(tStruct reflect.Type, hdr, r Row) (reflect.Value, error) {
 	return vPointer, nil
 }
 
-func unmarshalHeader(scanner *bufio.Scanner) (Row, error) {
+func parseHeader(scanner *bufio.Scanner) (Row, error) {
 	// ignore empty lines
 	s := ""
 	for scanner.Scan() {
