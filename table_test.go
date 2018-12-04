@@ -1,6 +1,7 @@
 package table
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
@@ -19,10 +20,10 @@ type testRow struct {
 
 var table = []byte(`
 
-string  | custom || int   | float | bool     | uint | escape  | 文字列    
-------- | ------ || ----- | ----- | -------- | ---- | ------- | --------
-abc     | OK     || 302   | 1.234 | true     | 7890 | abc\nd  | あいうえお  
-        | NG     || -0x20 | -5    | non-bool | 3333 | \|\\n\| | 日本語    
+string  | custom || int   | float | bool  | uint | escape  | 文字列    
+------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
+abc     | OK     || 302   | 1.234 | true  | 7890 | abc\nd  | あいうえお  
+        | NG     || -0x20 | -5    | F     | 3333 | \|\\n\| | 日本語    
 
 ignored lines...
 
@@ -55,8 +56,16 @@ var wantTable = []testRow{
 type okng bool
 
 func (o *okng) UnmarshalTable(p []byte) error {
-	*o = string(p) == "OK"
-	return nil
+	switch string(p) {
+	case "OK":
+		*o = true
+		return nil
+	case "NG":
+		*o = false
+		return nil
+	}
+
+	return fmt.Errorf("neither OK nor NG: %q", string(p))
 }
 
 func (o okng) String() string {
@@ -84,7 +93,7 @@ func TestUnmarshal(t *testing.T) {
 	}
 }
 
-func TestUnmarshal_error(t *testing.T) {
+func TestUnmarshal_rowStructParameterError(t *testing.T) {
 	tests := []interface{}{
 		nil,
 		123,
@@ -105,7 +114,7 @@ func TestUnmarshal_error(t *testing.T) {
 	}
 }
 
-func TestUnmarshaler(t *testing.T) {
+func TestUnmarshaler_UnmarshalTable(t *testing.T) {
 	var sut okng
 	if !reflect.PtrTo(reflect.TypeOf(sut)).Implements(unmarshalerType) {
 		t.Fatal()
@@ -118,6 +127,72 @@ func TestUnmarshaler(t *testing.T) {
 
 	if !sut {
 		t.Fatal("UnmarshalTable(OK) should be true")
+	}
+}
+
+type intTableRow struct {
+	value int `table:"intValue"`
+}
+
+func TestUnmarshal_intError(t *testing.T) {
+	ts := []byte(`intValue
+---------
+x`)
+	var intTable []intTableRow
+	if err := Unmarshal(ts, &intTable); err == nil {
+		t.Fatal("error should be non-nil")
+	}
+}
+
+type uintTableRow struct {
+	value uint `table:"uintValue"`
+}
+
+func TestUnmarshal_uintError(t *testing.T) {
+	ts := []byte(`uintValue
+---------
+x`)
+	var uintTable []uintTableRow
+	if err := Unmarshal(ts, &uintTable); err == nil {
+		t.Fatal("error should be non-nil")
+	}
+}
+
+type boolTableRow struct {
+	value bool `table:"boolValue"`
+}
+
+func TestUnmarshal_boolError(t *testing.T) {
+	ts := []byte(`boolValue
+---------
+x`)
+	var boolTable []boolTableRow
+	if err := Unmarshal(ts, &boolTable); err == nil {
+		t.Fatal("error should be non-nil")
+	}
+}
+
+type floatTableRow struct {
+	value float32 `table:"floatValue"`
+}
+
+func TestUnmarshal_floatError(t *testing.T) {
+	ts := []byte(`floatValue
+---------
+x`)
+	var floatTable []floatTableRow
+	if err := Unmarshal(ts, &floatTable); err == nil {
+		t.Fatal("error should be non-nil")
+	}
+}
+
+func TestUnmarshal_UnmarshalerError(t *testing.T) {
+	ts := []byte(`floatValue
+---------
+x`)
+	var okngTable []okng
+	if err := Unmarshal(ts, &okngTable); err == nil {
+		t.Fatal("error should be non-nil")
 	}
 }
 
