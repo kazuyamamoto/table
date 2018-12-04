@@ -9,22 +9,22 @@ import (
 func TestParseRow(t *testing.T) {
 	tests := []struct {
 		s    string
-		want Row
+		want row
 	}{
-		{"a", Row{"a"}},
-		{"a|b", Row{"a", "b"}},
-		{"|a|b", Row{"", "a", "b"}},
-		{"a|b|", Row{"a", "b", ""}},
-		{"\\|", Row{"|"}},
-		{"||\\||\\||", Row{"", "", "|", "|", ""}},
-		{"\\|\\\\n\\|", Row{"|\\n|"}},
-		{"\\\\|", Row{"\\", ""}},
-		{"\\n", Row{"\n"}},
+		{"a", row{"a"}},
+		{"a|b", row{"a", "b"}},
+		{"|a|b", row{"", "a", "b"}},
+		{"a|b|", row{"a", "b", ""}},
+		{"\\|", row{"|"}},
+		{"||\\||\\||", row{"", "", "|", "|", ""}},
+		{"\\|\\\\n\\|", row{"|\\n|"}},
+		{"\\\\|", row{"\\", ""}},
+		{"\\n", row{"\n"}},
 	}
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			got, err := ParseRow(tt.s)
+			got, err := parseRow(tt.s)
 			if err != nil {
 				t.Error(err)
 			}
@@ -41,7 +41,7 @@ func TestParseRow_error(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			got, err := ParseRow(tt)
+			got, err := parseRow(tt)
 			if err == nil {
 				t.Errorf("should be error: got %v", got)
 			}
@@ -51,7 +51,7 @@ func TestParseRow_error(t *testing.T) {
 
 func TestRow_isDelimiter(t *testing.T) {
 	tests := []struct {
-		row  Row
+		row  row
 		want bool
 	}{
 		{[]string{"-"}, true},
@@ -68,8 +68,8 @@ func TestRow_isDelimiter(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			if tt.row.IsDelimiter() != tt.want {
-				t.Fatalf("Row.IsDelimiter() should be %v", tt.want)
+			if tt.row.isDelimiter() != tt.want {
+				t.Fatalf("row.isDelimiter() should be %v", tt.want)
 			}
 		})
 	}
