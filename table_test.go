@@ -83,9 +83,8 @@ func TestUnmarshal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	wantNRows := 2
-	if len(tbl) != wantNRows {
-		t.Fatalf("#rows: want %v, got %v, table %v", wantNRows, len(tbl), tbl)
+	if len(tbl) != len(wantTable) {
+		t.Fatalf("#rows: want %v, got %v, table %v", len(wantTable), len(tbl), tbl)
 	}
 
 	if !reflect.DeepEqual(wantTable, tbl) {
@@ -131,7 +130,7 @@ func TestUnmarshaler_UnmarshalTable(t *testing.T) {
 }
 
 type intTableRow struct {
-	value int `table:"intValue"`
+	Value int `table:"intValue"`
 }
 
 func TestUnmarshal_intError(t *testing.T) {
@@ -145,7 +144,7 @@ x`)
 }
 
 type uintTableRow struct {
-	value uint `table:"uintValue"`
+	Value uint `table:"uintValue"`
 }
 
 func TestUnmarshal_uintError(t *testing.T) {
@@ -159,7 +158,7 @@ x`)
 }
 
 type boolTableRow struct {
-	value bool `table:"boolValue"`
+	Value bool `table:"boolValue"`
 }
 
 func TestUnmarshal_boolError(t *testing.T) {
@@ -173,7 +172,7 @@ x`)
 }
 
 type floatTableRow struct {
-	value float32 `table:"floatValue"`
+	Value float32 `table:"floatValue"`
 }
 
 func TestUnmarshal_floatError(t *testing.T) {
@@ -203,7 +202,7 @@ func TestUnmarshal_unescapeCustomString(t *testing.T) {
 	}
 
 	want := customString("abc\nd")
-	if tbl[0].CustomString != customString("abc\nd") {
+	if tbl[0].CustomString != want {
 		t.Fatalf("want %q, got %q", want, tbl[0].CustomString)
 	}
 
