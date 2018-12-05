@@ -65,16 +65,16 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 		return errors.New("value of interface{} is not a pointer of slice of struct")
 	}
 
-	scanner := bufio.NewScanner(r)
-	hdr, err := parseHeader(scanner)
+	sc := scanner{bufio.NewScanner(r)}
+	hdr, err := parseHeader(sc)
 	if err != nil {
-		return fmt.Errorf("read header: %v", err)
+		return fmt.Errorf("parse header: %v", err)
 	}
 
 	// table body
 	vSlice := vPointer.Elem()
-	for scanner.Scan() {
-		t := strings.TrimSpace(scanner.Text())
+	for sc.Scan() {
+		t := sc.Text()
 		if t == "" {
 			return nil
 		}
@@ -84,8 +84,8 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 			return fmt.Errorf("parse table body: %v", err)
 		}
 
-		if len(r) != len(hdr) {
-			return fmt.Errorf("#columns: header is %v but table body is %v", len(hdr), len(r))
+		if r.columns() != hdr.columns() {
+			return fmt.Errorf("number of columns: header=%v body=%v", hdr.columns(), r.columns())
 		}
 
 		if r.isDelimiter() {
@@ -103,7 +103,34 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 	return nil
 }
 
-// unmarshalerType is an object of type of Unmarshaler.
+func parseHeader(sc scanner) (row, error) {
+	// ignore empty lines
+	s := ""
+	for sc.Scan() {
+		if s = sc.Text(); s != "" {
+			break
+		}
+	}
+
+	if s == "" {
+		return nil, errors.New("no header")
+	}
+
+	hdr, err := parseRow(s)
+	if err != nil {
+		return nil, fmt.Errorf("parse header row: %v", err)
+	}
+
+	return hdr, nil
+}
+
+type scanner struct{ *bufio.Scanner }
+
+func (sc scanner) Text() string {
+	return strings.TrimSpace(sc.Scanner.Text())
+}
+
+// unmarshalerType is an object represents type of Unmarshaler.
 var unmarshalerType = reflect.TypeOf(new(Unmarshaler)).Elem()
 
 // unmarshalStruct unmarshals r into value of tStruct type.
@@ -172,25 +199,4 @@ func unmarshalStruct(tStruct reflect.Type, hdr, r row) (reflect.Value, error) {
 	}
 
 	return vPointer, nil
-}
-
-func parseHeader(scanner *bufio.Scanner) (row, error) {
-	// ignore empty lines
-	s := ""
-	for scanner.Scan() {
-		if s = strings.TrimSpace(scanner.Text()); s != "" {
-			break
-		}
-	}
-
-	if s == "" {
-		return nil, errors.New("no header")
-	}
-
-	hdr, err := parseRow(s)
-	if err != nil {
-		return nil, fmt.Errorf("parse header row: %v", err)
-	}
-
-	return hdr, nil
 }

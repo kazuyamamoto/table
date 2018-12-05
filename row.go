@@ -70,6 +70,10 @@ func (r row) isDelimiter() bool {
 	return true
 }
 
+func (r row) columns() int {
+	return len(r)
+}
+
 func isNotDelimiter(r rune) bool {
 	return r != '-'
 }
