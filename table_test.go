@@ -18,7 +18,7 @@ type testRow struct {
 	Escape    string  `table:"escape"`
 }
 
-var table = []byte(`
+var tableString = []byte(`
 
 string  | custom || int   | float | bool  | uint | escape  | 文字列    
 ------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
@@ -78,7 +78,7 @@ func (o okng) String() string {
 
 func TestUnmarshal(t *testing.T) {
 	var tbl []testRow
-	err := Unmarshal(table, &tbl)
+	err := Unmarshal(tableString, &tbl)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestUnmarshal_rowStructParameterError(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			err := Unmarshal(table, tt)
+			err := Unmarshal(tableString, tt)
 			if err == nil {
 				t.Fatal("err should be non-nil")
 			}
@@ -134,11 +134,11 @@ type intTableRow struct {
 }
 
 func TestUnmarshal_intError(t *testing.T) {
-	ts := []byte(`intValue
+	s := []byte(`intValue
 ---------
 x`)
 	var intTable []intTableRow
-	if err := Unmarshal(ts, &intTable); err == nil {
+	if err := Unmarshal(s, &intTable); err == nil {
 		t.Fatal("error should be non-nil")
 	}
 }
@@ -148,11 +148,11 @@ type uintTableRow struct {
 }
 
 func TestUnmarshal_uintError(t *testing.T) {
-	ts := []byte(`uintValue
+	s := []byte(`uintValue
 ---------
 x`)
 	var uintTable []uintTableRow
-	if err := Unmarshal(ts, &uintTable); err == nil {
+	if err := Unmarshal(s, &uintTable); err == nil {
 		t.Fatal("error should be non-nil")
 	}
 }
@@ -162,11 +162,11 @@ type boolTableRow struct {
 }
 
 func TestUnmarshal_boolError(t *testing.T) {
-	ts := []byte(`boolValue
+	s := []byte(`boolValue
 ---------
 x`)
 	var boolTable []boolTableRow
-	if err := Unmarshal(ts, &boolTable); err == nil {
+	if err := Unmarshal(s, &boolTable); err == nil {
 		t.Fatal("error should be non-nil")
 	}
 }
@@ -176,28 +176,28 @@ type floatTableRow struct {
 }
 
 func TestUnmarshal_floatError(t *testing.T) {
-	ts := []byte(`floatValue
+	s := []byte(`floatValue
 ---------
 x`)
 	var floatTable []floatTableRow
-	if err := Unmarshal(ts, &floatTable); err == nil {
+	if err := Unmarshal(s, &floatTable); err == nil {
 		t.Fatal("error should be non-nil")
 	}
 }
 
 func TestUnmarshal_UnmarshalerError(t *testing.T) {
-	ts := []byte(`floatValue
+	s := []byte(`floatValue
 ---------
 x`)
 	var okngTable []okng
-	if err := Unmarshal(ts, &okngTable); err == nil {
+	if err := Unmarshal(s, &okngTable); err == nil {
 		t.Fatal("error should be non-nil")
 	}
 }
 
 func TestUnmarshal_unescapeCustomString(t *testing.T) {
 	var tbl []testRowCustomString
-	if err := Unmarshal(table, &tbl); err != nil {
+	if err := Unmarshal(tableString, &tbl); err != nil {
 		t.Fatal(err)
 	}
 
@@ -221,4 +221,51 @@ type customString string
 func (c *customString) UnmarshalTable(p []byte) error {
 	*c = customString(p)
 	return nil
+}
+
+type multilineHeaderRow struct {
+	Single  int `table:"single line header"`
+	Dual    int `table:"dual line header"`
+	Triple  int `table:"三行 の ヘッダー"`
+	Skipped int `table:"skipped header"`
+}
+
+func TestUnmarshal_multilineHeader(t *testing.T) {
+	var s = []byte(`
+                   | dual line | 三行     | skipped
+                   | header    | の       |
+single line header |           | ヘッダー | header
+------------------ | --------- | -------- | --------
+1                  | 2	       | 3        | 4
+`)
+
+	var tbl []multilineHeaderRow
+	if err := Unmarshal(s, &tbl); err != nil {
+		t.Fatal(err)
+	}
+
+	want := []multilineHeaderRow{
+		{1, 2, 3, 4},
+	}
+	if !reflect.DeepEqual(tbl, want) {
+		t.Fatalf("want %v, got %v", want, tbl)
+	}
+}
+
+func TestUnmarshal_multilineHeaderNoBody(t *testing.T) {
+	var s = []byte(`
+                   | dual line | 三行     | skipped
+                   | header    | の       |
+single line header |           | ヘッダー | header
+`)
+
+	var tbl []multilineHeaderRow
+	if err := Unmarshal(s, &tbl); err != nil {
+		t.Fatal(err)
+	}
+
+	want := []multilineHeaderRow{}
+	if !reflect.DeepEqual(tbl, want) {
+		t.Fatalf("want %v, got %v", want, tbl)
+	}
 }

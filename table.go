@@ -6,11 +6,12 @@
 //   abc     | OK     | 302   | 1.234 | true  | 7890 | abc\nd | あいうえお
 //           | NG     | -0x20 | -5    | F     | 3333 | \\n\|  | 日本語
 //
-// First row is header. A row filled with '-' is assumed as delimiter.
-// It is ignored. Empty lines before header are ignored.
-// Table ends with an empty line. Its following lines are ignored.
-// Values in table body are unescaped while unmarshaling.
-// Escape sequences are "\n" (unescaped into LF), "\\"(\), and "\|"(|).
+// A row filled with '-' is assumed as delimiter.
+// Header is rows above the first delimiter and body is below that delimiter.
+// Delimiters in body are ignored. Empty lines above header are ignored.
+// Table ends with an empty line. Following lines are ignored.
+// Escape sequences can be used in values. Those are "\n" (unescaped into LF),
+// "\\" (\), and "\|" (|).
 package table
 
 import (
@@ -139,7 +140,7 @@ func unmarshalStruct(tStruct reflect.Type, hdr, r row) (reflect.Value, error) {
 			continue
 		}
 
-		// Unmarshal basic type values. Ignore unknown type values
+		// Unmarshal basic type values
 		switch vField.Kind() {
 		case reflect.String:
 			vField.SetString(s)
