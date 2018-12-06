@@ -10,40 +10,40 @@ type row []string
 
 // parseRow parses row string.
 func parseRow(s string) (row, error) {
-	var row row
+	var r row
 	escaping := false
-	cell := strings.Builder{}
-	for _, r := range s {
-		switch r {
+	b := strings.Builder{}
+	for _, rn := range s {
+		switch rn {
 		case '\\':
 			if escaping {
-				cell.WriteRune(r)
+				b.WriteRune(rn)
 			}
 			escaping = !escaping
 		case 'n':
 			if escaping {
-				cell.WriteRune('\n')
+				b.WriteRune('\n')
 				escaping = false
 			} else {
-				cell.WriteRune('n')
+				b.WriteRune('n')
 			}
 		case '|':
 			if escaping {
-				cell.WriteRune(r)
+				b.WriteRune(rn)
 				escaping = false
 			} else {
-				row = append(row, trim(cell.String()))
-				cell.Reset()
+				r = append(r, trim(b.String()))
+				b.Reset()
 			}
 		default:
 			if escaping {
-				return nil, fmt.Errorf("unsupported escaped character %q", r)
+				return nil, fmt.Errorf("unsupported escaped character %q", rn)
 			}
-			cell.WriteRune(r)
+			b.WriteRune(rn)
 		}
 	}
 
-	return append(row, trim(cell.String())), nil
+	return append(r, trim(b.String())), nil
 }
 
 // index returns index of cell whose value equals v.
@@ -74,8 +74,8 @@ func (r row) numColumn() int {
 	return len(r)
 }
 
-// merge concatinates two values in same columns of r and other
-// with whitespace between them. Returns non-nil error
+// merge concatinates two values of same column of r and other
+// inserting whitespace between them. Returns non-nil error
 // if number of columns of r and other are different.
 func (r row) merge(other row) error {
 	if r.numColumn() != other.numColumn() {
@@ -93,8 +93,8 @@ func (r row) merge(other row) error {
 	return nil
 }
 
-func isNotDelimiter(r rune) bool {
-	return r != '-'
+func isNotDelimiter(rn rune) bool {
+	return rn != '-'
 }
 
 func trim(s string) string {

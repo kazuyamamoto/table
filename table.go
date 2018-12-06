@@ -81,11 +81,11 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 
 		r, err := parseRow(t)
 		if err != nil {
-			return fmt.Errorf("parse table body: %v", err)
+			return fmt.Errorf("parsing table body: %v", err)
 		}
 
-		if r.columns() != hdr.columns() {
-			return fmt.Errorf("number of columns: header=%v body=%v", hdr.columns(), r.columns())
+		if r.numColumn() != hdr.numColumn() {
+			return fmt.Errorf("number of columns: header=%v body=%v", hdr.numColumn(), r.numColumn())
 		}
 
 		if r.isDelimiter() {
@@ -104,21 +104,33 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 }
 
 func parseHeader(sc scanner) (row, error) {
-	// ignore empty lines
-	s := ""
+	enterHeader := false
+	var hdr row
 	for sc.Scan() {
-		if s = sc.Text(); s != "" {
-			break
+		t := sc.Text()
+		if t == "" {
+			if enterHeader {
+				return hdr, nil // table end
+			}
+		} else {
+			enterHeader = true
+			r, err := parseRow(t)
+			if err != nil {
+				return nil, fmt.Errorf("parsing header row: %v", err)
+			}
+
+			if r.isDelimiter() {
+				return hdr, nil
+			}
+
+			if hdr == nil {
+				hdr = r
+			} else {
+				if err = hdr.merge(r); err != nil {
+					return nil, fmt.Errorf("merging header: %v", err)
+				}
+			}
 		}
-	}
-
-	if s == "" {
-		return nil, errors.New("no header")
-	}
-
-	hdr, err := parseRow(s)
-	if err != nil {
-		return nil, fmt.Errorf("parse header row: %v", err)
 	}
 
 	return hdr, nil

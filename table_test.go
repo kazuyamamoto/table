@@ -20,10 +20,10 @@ type testRow struct {
 
 var tableString = []byte(`
 
-string  | custom || int   | float | bool  | uint | escape  | 文字列    
+string  | custom || int   | float | bool  | uint | escape  | 文字列
 ------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
-abc     | OK     || 302   | 1.234 | true  | 7890 | abc\nd  | あいうえお  
-        | NG     || -0x20 | -5    | F     | 3333 | \|\\n\| | 日本語    
+abc     | OK     || 302   | 1.234 | true  | 7890 | abc\nd  | あいうえお
+        | NG     || -0x20 | -5    | F     | 3333 | \|\\n\| | 日本語
 
 ignored lines...
 
@@ -92,7 +92,7 @@ func TestUnmarshal(t *testing.T) {
 	}
 }
 
-func TestUnmarshal_rowStructParameterError(t *testing.T) {
+func TestUnmarshal_invalidRowStruct(t *testing.T) {
 	tests := []interface{}{
 		nil,
 		123,
@@ -110,6 +110,100 @@ func TestUnmarshal_rowStructParameterError(t *testing.T) {
 				t.Fatal("err should be non-nil")
 			}
 		})
+	}
+}
+
+func TestUnmarshal_empty(t *testing.T) {
+	s := []byte("")
+
+	var tbl []testRow
+	err := Unmarshal(s, &tbl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tbl) > 0 {
+		t.Fatalf("table size should be 0: %d", len(tbl))
+	}
+}
+
+func TestUnmarshal_ignoredLinesOnly(t *testing.T) {
+	s := []byte(`
+    
+
+`)
+
+	var tbl []testRow
+	err := Unmarshal(s, &tbl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tbl) > 0 {
+		t.Fatalf("table size should be 0: %d", len(tbl))
+	}
+}
+
+func TestUnmarshal_headerOnly(t *testing.T) {
+	s := []byte(`string  | custom || int   | float | bool  | uint | escape  | 文字列
+`)
+
+	var tbl []testRow
+	err := Unmarshal(s, &tbl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tbl) > 0 {
+		t.Fatalf("table size should be 0: %d", len(tbl))
+	}
+}
+
+func TestUnmarshal_headerAndDelimiter(t *testing.T) {
+	s := []byte(`
+string  | custom || int   | float | bool  | uint | escape  | 文字列
+------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
+`)
+
+	var tbl []testRow
+	err := Unmarshal(s, &tbl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tbl) > 0 {
+		t.Fatalf("table size should be 0: %d", len(tbl))
+	}
+}
+
+func TestUnmarshal_delimiterOnly(t *testing.T) {
+	s := []byte(`
+------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
+`)
+
+	var tbl []testRow
+	err := Unmarshal(s, &tbl)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(tbl) > 0 {
+		t.Fatalf("table size should be 0: %d", len(tbl))
+	}
+}
+
+func TestUnmarshal_numberOfColumnDifferent(t *testing.T) {
+	s := []byte(`
+
+string  | custom || int   | float | bool  | uint | escape  | 文字列
+------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
+abc     | OK     || 302   | 1.234 | true  | 7890 | abc\nd  | あいうえお
+        | NG     || -0x20 | -5    | F     | 3333 | \|\\n\|   日本語
+`)
+	var tbl []testRow
+	err := Unmarshal(s, &tbl)
+	if err == nil {
+		t.Fatal("error should be non-nil")
 	}
 }
 
@@ -133,12 +227,13 @@ type intTableRow struct {
 	Value int `table:"intValue"`
 }
 
-func TestUnmarshal_intError(t *testing.T) {
+func TestUnmarshal_invalidInt(t *testing.T) {
 	s := []byte(`intValue
 ---------
 x`)
 	var intTable []intTableRow
-	if err := Unmarshal(s, &intTable); err == nil {
+	err := Unmarshal(s, &intTable)
+	if err == nil {
 		t.Fatal("error should be non-nil")
 	}
 }
@@ -147,12 +242,13 @@ type uintTableRow struct {
 	Value uint `table:"uintValue"`
 }
 
-func TestUnmarshal_uintError(t *testing.T) {
+func TestUnmarshal_invalidUint(t *testing.T) {
 	s := []byte(`uintValue
 ---------
 x`)
 	var uintTable []uintTableRow
-	if err := Unmarshal(s, &uintTable); err == nil {
+	err := Unmarshal(s, &uintTable)
+	if err == nil {
 		t.Fatal("error should be non-nil")
 	}
 }
@@ -161,12 +257,13 @@ type boolTableRow struct {
 	Value bool `table:"boolValue"`
 }
 
-func TestUnmarshal_boolError(t *testing.T) {
+func TestUnmarshal_invalidBool(t *testing.T) {
 	s := []byte(`boolValue
 ---------
 x`)
 	var boolTable []boolTableRow
-	if err := Unmarshal(s, &boolTable); err == nil {
+	err := Unmarshal(s, &boolTable)
+	if err == nil {
 		t.Fatal("error should be non-nil")
 	}
 }
@@ -175,29 +272,21 @@ type floatTableRow struct {
 	Value float32 `table:"floatValue"`
 }
 
-func TestUnmarshal_floatError(t *testing.T) {
+func TestUnmarshal_invalidFloat(t *testing.T) {
 	s := []byte(`floatValue
 ---------
 x`)
 	var floatTable []floatTableRow
-	if err := Unmarshal(s, &floatTable); err == nil {
-		t.Fatal("error should be non-nil")
-	}
-}
-
-func TestUnmarshal_UnmarshalerError(t *testing.T) {
-	s := []byte(`floatValue
----------
-x`)
-	var okngTable []okng
-	if err := Unmarshal(s, &okngTable); err == nil {
+	err := Unmarshal(s, &floatTable)
+	if err == nil {
 		t.Fatal("error should be non-nil")
 	}
 }
 
 func TestUnmarshal_unescapeCustomString(t *testing.T) {
 	var tbl []testRowCustomString
-	if err := Unmarshal(tableString, &tbl); err != nil {
+	err := Unmarshal(tableString, &tbl)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -240,7 +329,8 @@ single line header |           | ヘッダー | header
 `)
 
 	var tbl []multilineHeaderRow
-	if err := Unmarshal(s, &tbl); err != nil {
+	err := Unmarshal(s, &tbl)
+	if err != nil {
 		t.Fatal(err)
 	}
 
@@ -248,24 +338,43 @@ single line header |           | ヘッダー | header
 		{1, 2, 3, 4},
 	}
 	if !reflect.DeepEqual(tbl, want) {
-		t.Fatalf("want %v, got %v", want, tbl)
+		t.Fatalf("want %q, got %q", want, tbl)
 	}
 }
 
-func TestUnmarshal_multilineHeaderNoBody(t *testing.T) {
+func TestUnmarshal_multilineHeader_noBody(t *testing.T) {
 	var s = []byte(`
                    | dual line | 三行     | skipped
                    | header    | の       |
 single line header |           | ヘッダー | header
+
 `)
 
 	var tbl []multilineHeaderRow
-	if err := Unmarshal(s, &tbl); err != nil {
+	err := Unmarshal(s, &tbl)
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	want := []multilineHeaderRow{}
+	var want []multilineHeaderRow
 	if !reflect.DeepEqual(tbl, want) {
-		t.Fatalf("want %v, got %v", want, tbl)
+		t.Fatalf("want %q, got %q", want, tbl)
+	}
+}
+
+func TestUnmarshal_multilineHeader_differentColumns(t *testing.T) {
+	var s = []byte(`
+                   | dual line | 三行     | skipped
+                   | header    | の       |
+single line header |           | ヘッダー   header
+------------------ | --------- | -------- | --------
+1                  | 2	       | 3        | 4
+
+`)
+
+	var tbl []multilineHeaderRow
+	err := Unmarshal(s, &tbl)
+	if err == nil {
+		t.Fatal("error should be non-nil")
 	}
 }
