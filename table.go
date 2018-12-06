@@ -180,35 +180,45 @@ func unmarshalStruct(tStruct reflect.Type, hdr, r row) (reflect.Value, error) {
 		}
 
 		// Unmarshal basic type values
-		switch vField.Kind() {
+		t := vField.Kind()
+		switch t {
 		case reflect.String:
 			vField.SetString(s)
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			i, err := strconv.ParseInt(s, 0, 64)
 			if err != nil {
-				return reflect.Value{}, fmt.Errorf("unmarshal int: %v", err)
+				return reflect.Value{}, parseBasicError{t, err}
 			}
 			vField.SetInt(i)
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			u, err := strconv.ParseUint(s, 10, 64)
 			if err != nil {
-				return reflect.Value{}, fmt.Errorf("unmarshal uint: %v", err)
+				return reflect.Value{}, parseBasicError{t, err}
 			}
 			vField.SetUint(u)
 		case reflect.Bool:
 			b, err := strconv.ParseBool(s)
 			if err != nil {
-				return reflect.Value{}, fmt.Errorf("unmarshal bool: %v", err)
+				return reflect.Value{}, parseBasicError{t, err}
 			}
 			vField.SetBool(b)
 		case reflect.Float32, reflect.Float64:
 			f, err := strconv.ParseFloat(s, 64)
 			if err != nil {
-				return reflect.Value{}, fmt.Errorf("unmarshal float: %v", err)
+				return reflect.Value{}, parseBasicError{t, err}
 			}
 			vField.SetFloat(f)
 		}
 	}
 
 	return vPointer, nil
+}
+
+type parseBasicError struct {
+	t     reflect.Kind
+	cause error
+}
+
+func (e parseBasicError) Error() string {
+	return fmt.Sprintf("parsing %s: %v", e.t, e.cause)
 }
