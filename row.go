@@ -70,8 +70,27 @@ func (r row) isDelimiter() bool {
 	return true
 }
 
-func (r row) columns() int {
+func (r row) numColumn() int {
 	return len(r)
+}
+
+// merge concatinates two values in same columns of r and other
+// with whitespace between them. Returns non-nil error
+// if number of columns of r and other are different.
+func (r row) merge(other row) error {
+	if r.numColumn() != other.numColumn() {
+		return fmt.Errorf("number of header columns is different")
+	}
+
+	for i := 0; i < other.numColumn(); i++ {
+		if r[i] == "" {
+			r[i] = other[i]
+		} else if other[i] != "" {
+			r[i] = r[i] + " " + other[i]
+		}
+	}
+
+	return nil
 }
 
 func isNotDelimiter(r rune) bool {
