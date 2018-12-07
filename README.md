@@ -27,7 +27,7 @@ Unmarshalling code is like as follows:
             panic(err)
     }
     
-    fmt.Println(tbl[0].S) // => abc
+    fmt.Println(tbl[0].S) // => hello world
     fmt.Println(tbl[0].I) // => 302
     fmt.Println(tbl[1].S) // => こんにちは
     fmt.Println(tbl[1].I) // => -32
