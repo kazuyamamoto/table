@@ -156,11 +156,12 @@ func unmarshalStruct(tStruct reflect.Type, hdr, r row) (reflect.Value, error) {
 		vField := vPointer.Elem().Field(fi)
 		tField := tStruct.Field(fi)
 		tag := tField.Tag.Get("table")
-		if tag == "" {
+		tagVal, _ := parseTag(tag)
+		if tagVal == "" {
 			continue
 		}
 
-		ti := hdr.index(tag)
+		ti := hdr.index(tagVal)
 		if ti == -1 {
 			continue
 		}
@@ -187,25 +188,25 @@ func unmarshalStruct(tStruct reflect.Type, hdr, r row) (reflect.Value, error) {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 			i, err := strconv.ParseInt(s, 0, 64)
 			if err != nil {
-				return reflect.Value{}, parseBasicError{t, err}
+				return reflect.Value{}, parseBasicTypeError{t, err}
 			}
 			vField.SetInt(i)
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			u, err := strconv.ParseUint(s, 10, 64)
 			if err != nil {
-				return reflect.Value{}, parseBasicError{t, err}
+				return reflect.Value{}, parseBasicTypeError{t, err}
 			}
 			vField.SetUint(u)
 		case reflect.Bool:
 			b, err := strconv.ParseBool(s)
 			if err != nil {
-				return reflect.Value{}, parseBasicError{t, err}
+				return reflect.Value{}, parseBasicTypeError{t, err}
 			}
 			vField.SetBool(b)
 		case reflect.Float32, reflect.Float64:
 			f, err := strconv.ParseFloat(s, 64)
 			if err != nil {
-				return reflect.Value{}, parseBasicError{t, err}
+				return reflect.Value{}, parseBasicTypeError{t, err}
 			}
 			vField.SetFloat(f)
 		}
@@ -214,11 +215,28 @@ func unmarshalStruct(tStruct reflect.Type, hdr, r row) (reflect.Value, error) {
 	return vPointer, nil
 }
 
-type parseBasicError struct {
+// parseBasicTypeError is an error represents failure for parsing basic types string.
+type parseBasicTypeError struct {
 	t     reflect.Kind
 	cause error
 }
 
-func (e parseBasicError) Error() string {
+func (e parseBasicTypeError) Error() string {
 	return fmt.Sprintf("parsing %s: %v", e.t, e.cause)
+}
+
+func parseTag(tag string) (value string, omitempty bool) {
+	ss := strings.Split(strings.TrimSpace(tag), ",")
+	if len(ss) == 0 {
+		return
+	}
+
+	value = ss[0]
+	for _, v := range ss[1:] {
+		if v == "omitempty" {
+			omitempty = true
+			return
+		}
+	}
+	return
 }
