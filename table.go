@@ -25,16 +25,16 @@ import (
 	"strings"
 )
 
-// Unmarshal parses r as table string then sets parsed objects to v.
-// If v is not a pointer to slice of struct, Unmarshal returns non-nil error.
-// When parsing an element in table string is failed, its value in v is zero.
+// Unmarshal parses s as table string then sets parsed objects to t.
+// If t is not a pointer to slice of struct, Unmarshal returns non-nil error.
+// If parsing an element in s is failed, returns non-nil error.
 // Headers are bound to struct field tags.
 // Tag format is as follows:
 //    `table:"column name"`
-// When header corresponds to "column name", element of the column is parsed and
-// set to struct field with the tag.
-func Unmarshal(r []byte, v interface{}) error {
-	return UnmarshalReader(bytes.NewReader(r), v)
+// When header corresponds to "column name" is found,
+// element of the column is parsed and the value is set to a struct field of the tag.
+func Unmarshal(s []byte, t interface{}) error {
+	return UnmarshalReader(bytes.NewReader(s), t)
 }
 
 // Unmarshaler provides customized unmarshaling method.
@@ -49,8 +49,8 @@ type Unmarshaler interface {
 
 // UnmarshalReader is like Unmarshal except for parsing data from io.Reader
 // instead of []byte.
-func UnmarshalReader(r io.Reader, v interface{}) error {
-	vPointer := reflect.ValueOf(v)
+func UnmarshalReader(s io.Reader, t interface{}) error {
+	vPointer := reflect.ValueOf(t)
 	if vPointer.Kind() != reflect.Ptr {
 		return errors.New("value of interface{} is not a pointer")
 	}
@@ -65,7 +65,7 @@ func UnmarshalReader(r io.Reader, v interface{}) error {
 		return errors.New("value of interface{} is not a pointer of slice of struct")
 	}
 
-	sc := scanner{bufio.NewScanner(r)}
+	sc := scanner{bufio.NewScanner(s)}
 	hdr, err := parseHeader(sc)
 	if err != nil {
 		return fmt.Errorf("parse header: %v", err)
@@ -155,13 +155,12 @@ func unmarshalStruct(tStruct reflect.Type, hdr, r row) (reflect.Value, error) {
 	for fi := 0; fi < vPointer.Elem().NumField(); fi++ {
 		vField := vPointer.Elem().Field(fi)
 		tField := tStruct.Field(fi)
-		tag := tField.Tag.Get("table")
-		tagVal, _ := parseTag(tag)
-		if tagVal == "" {
+		name, _ := parseTag(tField.Tag.Get("table"))
+		if name == "" { // TODO check should be once
 			continue
 		}
 
-		ti := hdr.index(tagVal)
+		ti := hdr.index(name)
 		if ti == -1 {
 			continue
 		}
@@ -225,18 +224,14 @@ func (e parseBasicTypeError) Error() string {
 	return fmt.Sprintf("parsing %s: %v", e.t, e.cause)
 }
 
-func parseTag(tag string) (value string, omitempty bool) {
+// parseTag parses tag into the name and omitempty.
+func parseTag(tag string) (string, bool) {
 	ss := strings.Split(strings.TrimSpace(tag), ",")
-	if len(ss) == 0 {
-		return
-	}
-
-	value = ss[0]
 	for _, v := range ss[1:] {
 		if v == "omitempty" {
-			omitempty = true
-			return
+			return ss[0], true
 		}
 	}
-	return
+
+	return ss[0], false
 }
