@@ -50,6 +50,7 @@ type Unmarshaler interface {
 // UnmarshalReader is like Unmarshal except for parsing data from io.Reader
 // instead of []byte.
 func UnmarshalReader(s io.Reader, t interface{}) error {
+	// vXxx represents a value. tXxx represents a type.
 	vPointer := reflect.ValueOf(t)
 	if vPointer.Kind() != reflect.Ptr {
 		return errors.New("value of interface{} is not a pointer")
@@ -149,18 +150,18 @@ var unmarshalerType = reflect.TypeOf(new(Unmarshaler)).Elem()
 // When successful, this returns pointer to the value and nil.
 // When failure, this returns zero-value of reflect.Value and non-nil error.
 func unmarshalStruct(tStruct reflect.Type, hdr, r row) (reflect.Value, error) {
-	// Not using reflect.Zero for settability.
+	// Not using reflect.Zero for "settability".
 	// See https://blog.golang.org/laws-of-reflection
 	vPointer := reflect.New(tStruct)
 	for fi := 0; fi < vPointer.Elem().NumField(); fi++ {
 		vField := vPointer.Elem().Field(fi)
 		tField := tStruct.Field(fi)
-		name, _ := parseTag(tField.Tag.Get("table"))
-		if name == "" { // TODO check should be once
+		tag := tField.Tag.Get("table")
+		if tag == "" { // TODO check can be once
 			continue
 		}
 
-		ti := hdr.index(name)
+		ti := hdr.index(tag)
 		if ti == -1 {
 			continue
 		}
@@ -222,16 +223,4 @@ type parseBasicTypeError struct {
 
 func (e parseBasicTypeError) Error() string {
 	return fmt.Sprintf("parsing %s: %v", e.t, e.cause)
-}
-
-// parseTag parses tag into the name and omitempty.
-func parseTag(tag string) (string, bool) {
-	ss := strings.Split(strings.TrimSpace(tag), ",")
-	for _, v := range ss[1:] {
-		if v == "omitempty" {
-			return ss[0], true
-		}
-	}
-
-	return ss[0], false
 }
