@@ -93,12 +93,22 @@ string  | custom || int   | float | bool  | uint | escape  | 文字列
         | NG     || -0x20 | -5    | F     | 3333 | \|\\n\|   日本語
 `,
 		},
+		{
+			"required",
+			`
+string  | custom || int   | float | bool  | uint | escape  
+------- | ------ || ----- | ----- | ----- | ---- | ------- 
+        | NG     || -0x20 | -5    | F     | 3333 | \|\\n\| 
+`,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var table []testRow
-			if err := Unmarshal([]byte(tt.s), table); err == nil {
+			err := Unmarshal([]byte(tt.s), &table)
+			t.Log(err)
+			if err == nil {
 				t.Fatal("error should be non-nil")
 			}
 		})

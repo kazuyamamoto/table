@@ -163,9 +163,8 @@ func unmarshalStruct(tStruct reflect.Type, hdr, r row) (reflect.Value, error) {
 
 		ti := hdr.index(tag)
 		if ti == -1 {
-			continue
+			return reflect.Value{}, fmt.Errorf("found no tag named %s", tag)
 		}
-
 		s := strings.TrimSpace(r[ti])
 
 		// Unmarshal Unmarshaler implementation
