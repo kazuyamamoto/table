@@ -143,9 +143,6 @@ func (sc scanner) Text() string {
 	return strings.TrimSpace(sc.Scanner.Text())
 }
 
-// unmarshalerType is an object represents type of Unmarshaler.
-var unmarshalerType = reflect.TypeOf(new(Unmarshaler)).Elem()
-
 func fieldToHeader(tStruct reflect.Type, hdr row) ([]int, error) {
 	var field []int
 	for fi := 0; fi < tStruct.NumField(); fi++ {
@@ -184,59 +181,76 @@ func unmarshalStruct(tStruct reflect.Type, hdr, r row) (reflect.Value, error) {
 		}
 		s := strings.TrimSpace(r[ti])
 
-		// Unmarshal Unmarshaler implementation
 		if reflect.PtrTo(tField.Type).Implements(unmarshalerType) {
-			// calls Addr() for pointer receiver
-			m := vField.Addr().MethodByName("UnmarshalTable")
-			vReturns := m.Call([]reflect.Value{reflect.ValueOf([]byte(s))})
-			if len(vReturns) > 0 && !vReturns[0].IsNil() {
-				return reflect.Value{}, vReturns[0].Interface().(error)
+			if err := unmarshalUnmarshalerType(vField, s); err != nil {
+				return reflect.Value{}, err
 			}
-
 			continue
 		}
 
-		// Unmarshal basic type values
-		t := vField.Kind()
-		switch t {
-		case reflect.String:
-			vField.SetString(s)
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			i, err := strconv.ParseInt(s, 0, 64)
-			if err != nil {
-				return reflect.Value{}, parseBasicTypeError{t, err}
-			}
-			vField.SetInt(i)
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			u, err := strconv.ParseUint(s, 10, 64)
-			if err != nil {
-				return reflect.Value{}, parseBasicTypeError{t, err}
-			}
-			vField.SetUint(u)
-		case reflect.Bool:
-			b, err := strconv.ParseBool(s)
-			if err != nil {
-				return reflect.Value{}, parseBasicTypeError{t, err}
-			}
-			vField.SetBool(b)
-		case reflect.Float32, reflect.Float64:
-			f, err := strconv.ParseFloat(s, 64)
-			if err != nil {
-				return reflect.Value{}, parseBasicTypeError{t, err}
-			}
-			vField.SetFloat(f)
+		if err := unmarshalBasicType(vField, s); err != nil {
+			return reflect.Value{}, err
 		}
 	}
 
 	return vPointer, nil
 }
 
+// unmarshalerType is an object represents type of Unmarshaler.
+var unmarshalerType = reflect.TypeOf(new(Unmarshaler)).Elem()
+
+func unmarshalUnmarshalerType(v reflect.Value, s string) error {
+	// calls Addr() for pointer receiver
+	m := v.Addr().MethodByName("UnmarshalTable")
+	ret := m.Call([]reflect.Value{reflect.ValueOf([]byte(s))})
+	if len(ret) > 0 && !ret[0].IsNil() {
+		return ret[0].Interface().(error)
+	}
+
+	return nil
+}
+
+func unmarshalBasicType(v reflect.Value, s string) error {
+	switch k := v.Kind(); k {
+	case reflect.String:
+		v.SetString(s)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		i, err := strconv.ParseInt(s, 0, 64)
+		if err != nil {
+			return parseBasicTypeError{k, err}
+		}
+		v.SetInt(i)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		u, err := strconv.ParseUint(s, 10, 64)
+		if err != nil {
+			return parseBasicTypeError{k, err}
+		}
+		v.SetUint(u)
+	case reflect.Bool:
+		b, err := strconv.ParseBool(s)
+		if err != nil {
+			return parseBasicTypeError{k, err}
+		}
+		v.SetBool(b)
+	case reflect.Float32, reflect.Float64:
+		f, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return parseBasicTypeError{k, err}
+		}
+		v.SetFloat(f)
+	default:
+		return parseBasicTypeError{k, fmt.Errorf("unknown type")}
+	}
+
+	return nil
+}
+
 // parseBasicTypeError is an error represents failure for parsing basic types string.
 type parseBasicTypeError struct {
-	t     reflect.Kind
+	kind  reflect.Kind
 	cause error
 }
 
 func (e parseBasicTypeError) Error() string {
-	return fmt.Sprintf("parsing %s: %v", e.t, e.cause)
+	return fmt.Sprintf("parsing %s: %v", e.kind, e.cause)
 }
