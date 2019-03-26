@@ -323,3 +323,17 @@ single line header |           | ヘッダー   header
 		})
 	}
 }
+
+func BenchmarkUnmarshal(b *testing.B) {
+	s := []byte(`
+string  | custom || int   | float | bool  | uint | escape  | 文字列
+------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
+abc     | OK     || 302   | 1.234 | true  | 7890 | abc\nd  | あいうえお
+        | NG     || -0x20 | -5    | F     | 3333 | \|\\n\| | 日本語
+`)
+
+	for n := 0; n < b.N; n++ {
+		var tbl []testRow
+		_ = Unmarshal(s, &tbl)
+	}
+}
