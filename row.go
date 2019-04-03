@@ -74,7 +74,7 @@ func (r row) numColumn() int {
 	return len(r)
 }
 
-// merge concatinates two values of same column of r and other
+// merge concatenates two values of same column of r and other
 // inserting whitespace between them. Returns non-nil error
 // if number of columns of r and other are different.
 func (r row) merge(other row) error {
