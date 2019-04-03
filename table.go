@@ -143,23 +143,6 @@ func (sc scanner) Text() string {
 	return strings.TrimSpace(sc.Scanner.Text())
 }
 
-func fieldToHeader(tStruct reflect.Type, hdr row) ([]int, error) {
-	var field []int
-	for fi := 0; fi < tStruct.NumField(); fi++ {
-		t := tStruct.Field(fi).Tag.Get("table")
-		if t == "" {
-			continue
-		}
-		ti := hdr.index(t)
-		if ti == -1 {
-			return nil, fmt.Errorf("field tag not found in table header: %s", t)
-		}
-		field = append(field, ti)
-	}
-
-	return field, nil
-}
-
 // unmarshalStruct unmarshals r into value of tStruct type.
 // When successful, this returns pointer to the value and nil.
 // When failure, this returns zero-value of reflect.Value and non-nil error.
