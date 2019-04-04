@@ -67,9 +67,17 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 	}
 
 	sc := scanner{bufio.NewScanner(s)}
-	hdr, err := parseHeader(sc)
+	header, err := parseHeader(sc)
 	if err != nil {
-		return fmt.Errorf("parse header: %v", err)
+		return fmt.Errorf("parsing header: %v", err)
+	}
+
+	if header.numColumn() == 0 {
+		return nil
+	}
+
+	if err = checkHeader(tStruct, header); err != nil {
+		return fmt.Errorf("checking header: %v", err)
 	}
 
 	// table body
@@ -85,15 +93,15 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 			return fmt.Errorf("parsing table body: %v", err)
 		}
 
-		if r.numColumn() != hdr.numColumn() {
-			return fmt.Errorf("number of columns: header=%v body=%v", hdr.numColumn(), r.numColumn())
+		if r.numColumn() != header.numColumn() {
+			return fmt.Errorf("number of columns: header=%v body=%v", header.numColumn(), r.numColumn())
 		}
 
 		if r.isDelimiter() {
 			continue
 		}
 
-		vStruct, err := unmarshalStruct(tStruct, hdr, r)
+		vStruct, err := unmarshalStruct(tStruct, header, r)
 		if err != nil {
 			return err
 		}
@@ -106,12 +114,12 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 
 func parseHeader(sc scanner) (row, error) {
 	enterHeader := false
-	var hdr row
+	var header row
 	for sc.Scan() {
 		t := sc.Text()
 		if t == "" {
 			if enterHeader {
-				return hdr, nil // table end
+				return header, nil // table end
 			}
 		} else {
 			enterHeader = true
@@ -121,26 +129,40 @@ func parseHeader(sc scanner) (row, error) {
 			}
 
 			if r.isDelimiter() {
-				return hdr, nil
+				return header, nil
 			}
 
-			if hdr == nil {
-				hdr = r
+			if header == nil {
+				header = r
 			} else {
-				if err = hdr.merge(r); err != nil {
+				if err = header.merge(r); err != nil {
 					return nil, fmt.Errorf("merging header: %v", err)
 				}
 			}
 		}
 	}
 
-	return hdr, nil
+	return header, nil
 }
 
 type scanner struct{ *bufio.Scanner }
 
 func (sc scanner) Text() string {
 	return strings.TrimSpace(sc.Scanner.Text())
+}
+
+func checkHeader(tStruct reflect.Type, header row) error {
+	for i := 0; i < tStruct.NumField(); i++ {
+		tag := tStruct.Field(i).Tag.Get("table")
+		if tag == "" {
+			continue
+		}
+
+		if header.index(tag) == -1 {
+			return fmt.Errorf("column named '%s' not found", tag)
+		}
+	}
+	return nil
 }
 
 // unmarshalStruct unmarshals r into value of tStruct type.

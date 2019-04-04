@@ -6,6 +6,33 @@ import (
 	"testing"
 )
 
+type testRow struct {
+	Bool      bool    `table:"bool value"`
+	Int       int     `table:"int value"`
+	Uint      uint    `table:"uint value"`
+	Float     float32 `table:"float value"`
+	String    string  `table:"string value"`
+	Mojiretsu string  `table:"文字列 の 値"`
+	Custom    okNg    `table:"custom value"`
+	Escaped   string  `table:"escaped value"`
+}
+
+// okNg is a custom Unmarshaler.
+type okNg bool
+
+func (o *okNg) UnmarshalTable(p []byte) error {
+	switch string(p) {
+	case "OK", "|":
+		*o = true
+		return nil
+	case "NG":
+		*o = false
+		return nil
+	}
+
+	return fmt.Errorf("neither OK nor NG: %q", string(p))
+}
+
 func TestUnmarshal(t *testing.T) {
 	tests := []struct {
 		name string
@@ -15,17 +42,14 @@ func TestUnmarshal(t *testing.T) {
 		{
 			"common usage",
 			`
-
-string  | custom || int   | float | bool  | uint | escape  | 文字列
-------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
-abc     | OK     || 302   | 1.234 | true  | 7890 | abc\nd  | あいうえお
-        | NG     || -0x20 | -5    | F     | 3333 | \|\\n\| | 日本語
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
+             | NG           || -0x20     | -5          | F          | 3333       | \|\\n\|       | 日本語
 
 ignored lines...
-
 `,
 			[]testRow{
-				// bool, int, uint, float, string, 文字列, custom, escape
 				{true, 302, 7890, 1.234, "abc", "あいうえお", true, "abc\nd"},
 				{false, -0x20, 3333, -5, "", "日本語", false, "|\\n|"},
 			},
@@ -45,15 +69,14 @@ ignored lines...
 		},
 		{
 			"header row only",
-			`string  | custom || int   | float | bool  | uint | escape  | 文字列
-`,
+			`string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値`,
 			nil,
 		},
 		{
 			"header row and delimiter row",
 			`
-string  | custom || int   | float | bool  | uint | escape  | 文字列
-------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
 `,
 			nil,
 		},
@@ -63,6 +86,26 @@ string  | custom || int   | float | bool  | uint | escape  | 文字列
 ------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
 `,
 			nil,
+		},
+		{
+			"multi-line header",
+			`
+string | custom ||       | float | bool  |       | escaped | 文字列
+value  |        || int   | value |       | uint  | value   | の
+       | value  || value |       | value | value |         | 値
+`,
+			nil,
+		},
+		{
+			"escaping for custom Unmarshaler",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | \|           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
+`,
+			[]testRow{
+				{true, 302, 7890, 1.234, "abc", "あいうえお", true, "abc\nd"},
+			},
 		},
 	}
 
@@ -80,244 +123,167 @@ string  | custom || int   | float | bool  | uint | escape  | 文字列
 	}
 }
 
-func TestUnmarshal_error_string(t *testing.T) {
+func TestUnmarshal_error(t *testing.T) {
 	tests := []struct {
-		name string
-		s    string
+		name  string
+		s     string
+		table interface{}
 	}{
 		{
 			"different column number",
 			`
-string  | custom || int   | float | bool  | uint | escape  | 文字列
-------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
-        | NG     || -0x20 | -5    | F     | 3333 | \|\\n\|   日本語
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | 7890       | \|\\n\|         あいうえお
 `,
+			&[]testRow{},
 		},
 		{
-			"required",
+			"required column",
 			`
-string  | custom || int   | float | bool  | uint | escape  
-------- | ------ || ----- | ----- | ----- | ---- | ------- 
-        | NG     || -0x20 | -5    | F     | 3333 | \|\\n\| 
+string value | custom value || int value | float value | bool value | uint value | escaped value
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- 
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd
 `,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var table []testRow
-			err := Unmarshal([]byte(tt.s), &table)
-			t.Log(err)
-			if err == nil {
-				t.Fatal("error should be non-nil")
-			}
-		})
-	}
-}
-
-func TestUnmarshal_error_table(t *testing.T) {
-	const s = `
-string  | custom || int   | float | bool  | uint | escape  | 文字列
-------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
-abc     | OK     || 302   | 1.234 | true  | 7890 | abc\nd  | あいうえお
-`
-
-	tests := []interface{}{
-		nil,
-		123,
-		"abc",
-		struct{}{},
-		testRow{},
-		&testRow{},
-		[]*testRow{},
-		&[]*testRow{},
-		&[][]string{},
-	}
-
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%T", tt), func(t *testing.T) {
-			if err := Unmarshal([]byte(s), tt); err == nil {
-				t.Fatal("err should be non-nil")
-			}
-		})
-	}
-}
-
-type testRow struct {
-	Bool      bool    `table:"bool"`
-	Int       int     `table:"int"`
-	Uint      uint    `table:"uint"`
-	Float     float32 `table:"float"`
-	String    string  `table:"string"`
-	Mojiretsu string  `table:"文字列"`
-	Custom    okNg    `table:"custom"`
-	Escape    string  `table:"escape"`
-}
-
-// okNg is a sample Unmarshaler.
-type okNg bool
-
-func (o *okNg) UnmarshalTable(p []byte) error {
-	switch string(p) {
-	case "OK":
-		*o = true
-		return nil
-	case "NG":
-		*o = false
-		return nil
-	}
-
-	return fmt.Errorf("neither OK nor NG: %q", string(p))
-}
-
-func TestUnmarshal_error_parseBasicType(t *testing.T) {
-	const s = `value
---
-?`
-
-	tests := []struct {
-		name  string
-		table interface{}
-	}{
-		{"int", &[]intRow{}},
-		{"uint", &[]uintRow{}},
-		{"bool", &[]boolRow{}},
-		{"float", &[]floatRow{}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := Unmarshal([]byte(s), tt.table); err == nil {
-				t.Fatal("error should be non-nil")
-			}
-		})
-	}
-}
-
-type intRow struct {
-	Value int `table:"value"`
-}
-
-type uintRow struct {
-	Value uint `table:"value"`
-}
-
-type boolRow struct {
-	Value bool `table:"value"`
-}
-
-type floatRow struct {
-	Value float32 `table:"value"`
-}
-
-func TestUnmarshal_unescapeCustomString(t *testing.T) {
-	const s = `
-escape 
-------- 
-abc\nd  
-\|\\n\| 
-`
-
-	var table []testRowCustomString
-	err := Unmarshal([]byte(s), &table)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	want := customString("abc\nd")
-	if table[0].CustomString != want {
-		t.Fatalf("want %q, got %q", want, table[0].CustomString)
-	}
-
-	want = customString("|\\n|")
-	if table[1].CustomString != want {
-		t.Fatalf("want %q, got %q", want, table[1].CustomString)
-	}
-}
-
-type testRowCustomString struct {
-	CustomString customString `table:"escape"`
-}
-
-type customString string
-
-func (c *customString) UnmarshalTable(p []byte) error {
-	*c = customString(p)
-	return nil
-}
-
-type multilineHeaderRow struct {
-	Single  int `table:"single line header"`
-	Dual    int `table:"dual line header"`
-	Triple  int `table:"三行 の ヘッダー"`
-	Skipped int `table:"skipped header"`
-}
-
-func TestUnmarshal_multilineHeader(t *testing.T) {
-	tests := []struct {
-		name string
-		s    string
-		want []multilineHeaderRow
-	}{
-		{
-			"golden path",
-			`
-                   | dual line | 三行     | skipped
-                   | header    | の       |
-single line header |           | ヘッダー | header
------------------- | --------- | -------- | --------
-1                  | 2	       | 3        | 4
-`,
-			[]multilineHeaderRow{{1, 2, 3, 4}},
+			&[]testRow{},
 		},
 		{
-			"no body",
+			"table:nil",
 			`
-                   | dual line | 三行     | skipped
-                   | header    | の       |
-single line header |           | ヘッダー | header
-
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
 `,
 			nil,
 		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var table []multilineHeaderRow
-			if err := Unmarshal([]byte(tt.s), &table); err != nil {
-				t.Fatal(err)
-			}
-
-			if !reflect.DeepEqual(table, tt.want) {
-				t.Fatalf("want %q, got %q", tt.want, table)
-			}
-		})
-	}
-}
-
-func TestUnmarshal_multilineHeader_error(t *testing.T) {
-	tests := []struct {
-		name string
-		s    string
-	}{
 		{
-			"different column number",
+			"table:int",
 			`
-                   | dual line | 三行     | skipped
-                   | header    | の       |
-single line header |           | ヘッダー   header
------------------- | --------- | -------- | --------
-1                  | 2	       | 3        | 4
-
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
 `,
+			123,
+		},
+		{
+			"table:string",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
+`,
+			"abc",
+		},
+		{
+			"table:row",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
+`,
+			testRow{},
+		},
+		{
+			"table:pointer to row",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
+`,
+			&testRow{},
+		},
+		{
+			"table:slice of row",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
+`,
+			[]testRow{},
+		},
+		{
+			"table:slice of pointer to row",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
+`,
+			[]*testRow{},
+		},
+		{
+			"table:pointer to slice of pointer to row",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
+`,
+			&[]*testRow{},
+		},
+		{
+			"table:pointer to slice of non-struct",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
+`,
+			&[][]string{},
+		},
+		{
+			"different number of columns in header",
+			`
+string | custom ||       | float | bool  |       | escaped | 文字列
+value  |        || int   | value |       | uint  | value   | の
+       | value  || value |       | value | value |           値
+------ | ------ || ----- | ----- | ----- | ----- | ------- | ------------
+abc    | OK     || 302   | 1.234 | true  | 7890  | abc\nd  | あいうえお
+`,
+			&[]testRow{},
+		},
+		{
+			"parse int",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || ?         | 1.234       | true       | 7890       | abc\nd        | あいうえお
+`,
+			&[]testRow{},
+		},
+		{
+			"parse uint",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | ?          | abc\nd        | あいうえお
+`,
+			&[]testRow{},
+		},
+		{
+			"parse float",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | ?           | true       | 7890       | abc\nd        | あいうえお
+`,
+			&[]testRow{},
+		},
+		{
+			"parse bool",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | x          | 7890       | abc\nd        | あいうえお
+`,
+			&[]testRow{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var table []multilineHeaderRow
-			if err := Unmarshal([]byte(tt.s), &table); err == nil {
+			err := Unmarshal([]byte(tt.s), tt.table)
+
+			t.Log(err)
+
+			if err == nil {
 				t.Fatal("error should be non-nil")
 			}
 		})
@@ -326,10 +292,10 @@ single line header |           | ヘッダー   header
 
 func BenchmarkUnmarshal(b *testing.B) {
 	s := []byte(`
-string  | custom || int   | float | bool  | uint | escape  | 文字列
-------- | ------ || ----- | ----- | ----- | ---- | ------- | --------
-abc     | OK     || 302   | 1.234 | true  | 7890 | abc\nd  | あいうえお
-        | NG     || -0x20 | -5    | F     | 3333 | \|\\n\| | 日本語
+string value | custom value || int value  | float value | bool value | uint value | escaped value | 文字列
+------------ | ------------ || ---------- | ----------- | ---------- | ---------- | ------------- | --------
+abc          | OK           || 302        | 1.234       | true       | 7890       | abc\nd        | あいうえお
+             | NG           || -0x20      | -5          | F          | 3333       | \|\\n\|       | 日本語
 `)
 
 	for n := 0; n < b.N; n++ {
