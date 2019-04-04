@@ -1,17 +1,3 @@
-// Package table provides functionality to unmarshal table string into slice of
-// struct. Table format is like those of lightweight markup languages:
-//
-//   string  | custom | int   | float | bool  | uint | escape | 文字列
-//   ------- | ------ | ----- | ----- | ----- | ---- | ------ | --------
-//   abc     | OK     | 302   | 1.234 | true  | 7890 | abc\nd | あいうえお
-//           | NG     | -0x20 | -5    | F     | 3333 | \\n\|  | 日本語
-//
-// A row filled with '-' is assumed as delimiter.
-// Header is rows above the first delimiter and body is below that delimiter.
-// Delimiters in body are ignored. Empty lines above header are ignored.
-// Table ends with an empty line. Following lines are ignored.
-// Escape sequences can be used in values. Those are "\n" (unescaped into LF),
-// "\\" (\), and "\|" (|).
 package table
 
 import (
@@ -37,7 +23,7 @@ func Unmarshal(s []byte, t interface{}) error {
 	return UnmarshalReader(bytes.NewReader(s), t)
 }
 
-// Unmarshaler provides customized unmarshaling method.
+// Unmarshaler provides customized unmarshalling method.
 // An implementation is assumed to be fields of struct which is underlying
 // type of Unmarshal's second parameter.
 // Unmarshal calls implementation's UnmarshalTable.
@@ -66,13 +52,13 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 		return errors.New("value of interface{} is not a pointer of slice of struct")
 	}
 
-	sc := scanner{bufio.NewScanner(s)}
-	header, err := parseHeader(sc)
+	scanner := scanner{bufio.NewScanner(s)}
+	header, err := parseHeader(scanner)
 	if err != nil {
 		return fmt.Errorf("parsing header: %v", err)
 	}
 
-	if header.numColumn() == 0 {
+	if header.columns() == 0 {
 		return nil
 	}
 
@@ -82,8 +68,8 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 
 	// table body
 	vSlice := vPointer.Elem()
-	for sc.Scan() {
-		t := sc.Text()
+	for scanner.Scan() {
+		t := scanner.Text()
 		if t == "" {
 			return nil
 		}
@@ -93,8 +79,8 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 			return fmt.Errorf("parsing table body: %v", err)
 		}
 
-		if r.numColumn() != header.numColumn() {
-			return fmt.Errorf("number of columns: header=%v body=%v", header.numColumn(), r.numColumn())
+		if r.columns() != header.columns() {
+			return fmt.Errorf("number of columns: header=%v body=%v", header.columns(), r.columns())
 		}
 
 		if r.isDelimiter() {

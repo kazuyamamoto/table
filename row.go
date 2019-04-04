@@ -8,9 +8,9 @@ import (
 // row represents a row of table.
 type row []string
 
-// parseRow parses row string.
+// parseRow parses s into row.
 func parseRow(s string) (row, error) {
-	var r row
+	var row row
 	escaping := false
 	b := strings.Builder{}
 	for _, rn := range s {
@@ -32,7 +32,7 @@ func parseRow(s string) (row, error) {
 				b.WriteRune(rn)
 				escaping = false
 			} else {
-				r = append(r, trim(b.String()))
+				row = append(row, trim(b.String()))
 				b.Reset()
 			}
 		default:
@@ -43,7 +43,7 @@ func parseRow(s string) (row, error) {
 		}
 	}
 
-	return append(r, trim(b.String())), nil
+	return append(row, trim(b.String())), nil
 }
 
 // index returns index of cell whose value equals v.
@@ -70,7 +70,8 @@ func (r row) isDelimiter() bool {
 	return true
 }
 
-func (r row) numColumn() int {
+// columns returns number of columns of r.
+func (r row) columns() int {
 	return len(r)
 }
 
@@ -78,11 +79,11 @@ func (r row) numColumn() int {
 // inserting whitespace between them. Returns non-nil error
 // if number of columns of r and other are different.
 func (r row) merge(other row) error {
-	if r.numColumn() != other.numColumn() {
+	if r.columns() != other.columns() {
 		return fmt.Errorf("number of header columns is different")
 	}
 
-	for i := 0; i < other.numColumn(); i++ {
+	for i := 0; i < other.columns(); i++ {
 		if r[i] == "" {
 			r[i] = other[i]
 		} else if other[i] != "" {

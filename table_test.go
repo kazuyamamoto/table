@@ -281,7 +281,7 @@ abc          | OK           || 302       | 1.234       | x          | 7890      
 		t.Run(tt.name, func(t *testing.T) {
 			err := Unmarshal([]byte(tt.s), tt.table)
 
-			t.Log(err)
+			// t.Log(err)
 
 			if err == nil {
 				t.Fatal("error should be non-nil")
