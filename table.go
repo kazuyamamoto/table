@@ -74,7 +74,7 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 			return nil
 		}
 
-		r, err := parseRow(t)
+		r, _, err := parseRow(t)
 		if err != nil {
 			return fmt.Errorf("parsing table body: %v", err)
 		}
@@ -109,7 +109,7 @@ func parseHeader(sc scanner) (row, error) {
 			}
 		} else {
 			enterHeader = true
-			r, err := parseRow(t)
+			r, _, err := parseRow(t)
 			if err != nil {
 				return nil, fmt.Errorf("parsing header row: %v", err)
 			}

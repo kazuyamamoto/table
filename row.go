@@ -9,7 +9,8 @@ import (
 type row []string
 
 // parseRow parses s into row.
-func parseRow(s string) (row, error) {
+// Bool return value indicates that the row wants to be merged with the next row.
+func parseRow(s string) (row, bool, error) {
 	var row row
 	escaping := false
 	b := strings.Builder{}
@@ -37,13 +38,13 @@ func parseRow(s string) (row, error) {
 			}
 		default:
 			if escaping {
-				return nil, fmt.Errorf("unsupported escaped character %q", rn)
+				return nil, false, fmt.Errorf("unsupported escaped character %q", rn)
 			}
 			b.WriteRune(rn)
 		}
 	}
 
-	return append(row, trim(b.String())), nil
+	return append(row, trim(b.String())), escaping, nil
 }
 
 // index returns index of cell whose value equals v.
@@ -75,7 +76,8 @@ func (r row) columns() int {
 	return len(r)
 }
 
-// merge concatenates two values of same column of r and other
+// merge merges r and other.
+// Values in corresponding column of two rows are merged
 // inserting whitespace between them. Returns non-nil error
 // if number of columns of r and other are different.
 func (r row) merge(other row) error {
