@@ -52,43 +52,42 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 		return errors.New("value of interface{} is not a pointer of slice of struct")
 	}
 
-	scanner := scanner{bufio.NewScanner(s)}
-	header, err := parseHeader(scanner)
+	rs := newRowScanner(s)
+	header, err := parseHeader(rs)
 	if err != nil {
 		return fmt.Errorf("parsing header: %v", err)
 	}
 
-	if header.len() == 0 {
+	if header.cols() == 0 {
 		return nil
 	}
 
-	index, err := indexFieldToColumn(tStruct, header)
+	indices, err := indexFieldToColumn(tStruct, header)
 	if err != nil {
 		return fmt.Errorf("checking header: %v", err)
 	}
 
 	// table body
 	vSlice := vPointer.Elem()
-	for scanner.Scan() {
-		t := scanner.Text()
-		if t == "" {
-			return nil
-		}
-
-		r, _, err := parseRow(t)
+	for rs.scan() {
+		r, _, err := rs.row()
 		if err != nil {
 			return fmt.Errorf("parsing table body: %v", err)
 		}
 
-		if r.len() != header.len() {
-			return fmt.Errorf("number of columns: header=%v body=%v", header.len(), r.len())
+		if r.cols() == 0 {
+			return nil
+		}
+
+		if r.cols() != header.cols() {
+			return fmt.Errorf("number of columns: header=%v body=%v", header.cols(), r.cols())
 		}
 
 		if r.isDelim() {
 			continue
 		}
 
-		vStruct, err := unmarshalStruct(tStruct, r, index)
+		vStruct, err := unmarshalStruct(tStruct, r, indices)
 		if err != nil {
 			return err
 		}
@@ -99,22 +98,21 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 	return nil
 }
 
-func parseHeader(sc scanner) (row, error) {
+func parseHeader(rs *rowScanner) (row, error) {
 	enterHeader := false
 	var header row
-	for sc.Scan() {
-		line := sc.Text()
-		if line == "" {
+	for rs.scan() {
+		r, _, err := rs.row()
+		if err != nil {
+			return nil, fmt.Errorf("parsing header row: %v", err)
+		}
+
+		if r == nil {
 			if enterHeader {
 				return header, nil // table end
 			}
 		} else {
 			enterHeader = true
-			r, _, err := parseRow(line)
-			if err != nil {
-				return nil, fmt.Errorf("parsing header row: %v", err)
-			}
-
 			if r.isDelim() {
 				return header, nil
 			}
@@ -132,10 +130,26 @@ func parseHeader(sc scanner) (row, error) {
 	return header, nil
 }
 
-type scanner struct{ *bufio.Scanner }
+// rowScanner は row 用の Scanner 。
+type rowScanner struct {
+	scanner *bufio.Scanner
+}
 
-func (sc scanner) Text() string {
-	return strings.TrimSpace(sc.Scanner.Text())
+func newRowScanner(r io.Reader) *rowScanner {
+	return &rowScanner{bufio.NewScanner(r)}
+}
+
+func (rs *rowScanner) scan() bool {
+	return rs.scanner.Scan()
+}
+
+func (rs *rowScanner) row() (row, bool, error) {
+	line := strings.TrimSpace(rs.scanner.Text())
+	if line == "" {
+		return nil, false, nil
+	}
+
+	return parseRow(line)
 }
 
 func indexFieldToColumn(tStruct reflect.Type, header row) ([]int, error) {
@@ -159,14 +173,14 @@ func indexFieldToColumn(tStruct reflect.Type, header row) ([]int, error) {
 // unmarshalStruct unmarshals r into value of tStruct type.
 // When successful, this returns pointer to the value and nil.
 // When failure, this returns zero-value of reflect.Value and non-nil error.
-func unmarshalStruct(tStruct reflect.Type, r row, index []int) (reflect.Value, error) {
-	// Not using reflect.Zero for "settability".
+func unmarshalStruct(tStruct reflect.Type, row row, indices []int) (reflect.Value, error) {
+	// Not using reflect.Zero because of "settability".
 	// See https://blog.golang.org/laws-of-reflection
 	vPointer := reflect.New(tStruct)
 	for fi := 0; fi < vPointer.Elem().NumField(); fi++ {
 		vField := vPointer.Elem().Field(fi)
 		tField := tStruct.Field(fi)
-		s := strings.TrimSpace(r[index[fi]])
+		s := strings.TrimSpace(row[indices[fi]])
 		if reflect.PtrTo(tField.Type).Implements(unmarshalerType) {
 			if err := unmarshalUnmarshalerType(vField, s); err != nil {
 				return reflect.Value{}, err

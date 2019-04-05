@@ -71,8 +71,8 @@ func (r row) isDelim() bool {
 	return true
 }
 
-// len returns number of columns of r.
-func (r row) len() int {
+// cols returns number of columns of r.
+func (r row) cols() int {
 	return len(r)
 }
 
@@ -81,11 +81,11 @@ func (r row) len() int {
 // inserting whitespace between them. Returns non-nil error
 // if number of columns of r and other are different.
 func (r row) merge(other row) error {
-	if r.len() != other.len() {
+	if r.cols() != other.cols() {
 		return fmt.Errorf("number of header columns is different")
 	}
 
-	for i := 0; i < other.len(); i++ {
+	for i := 0; i < other.cols(); i++ {
 		if r[i] == "" {
 			r[i] = other[i]
 		} else if other[i] != "" {
