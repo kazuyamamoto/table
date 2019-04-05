@@ -8,30 +8,85 @@ import (
 
 func TestParseRow(t *testing.T) {
 	tests := []struct {
-		s    string
-		want row
+		s         string
+		wantRow   row
+		wantMerge bool
 	}{
-		{"a", row{"a"}},
-		{"a ", row{"a"}},
-		{"a|b", row{"a", "b"}},
-		{"|a|b", row{"", "a", "b"}},
-		{"a|b|", row{"a", "b", ""}},
-		{"\\|", row{"|"}},
-		{"||\\||\\||", row{"", "", "|", "|", ""}},
-		{"\\|\\\\n\\|", row{"|\\n|"}},
-		{"\\\\|", row{"\\", ""}},
-		{"\\n", row{"\n"}},
+		{
+			`a`,
+			row{"a"},
+			false,
+		},
+		{
+			`a `,
+			row{"a"},
+			false,
+		},
+		{
+			`a|b`,
+			row{"a", "b"},
+			false,
+		},
+		{
+			`|a|b`,
+			row{"", "a", "b"},
+			false,
+		},
+		{
+			`a|b|`,
+			row{"a", "b", ""},
+			false,
+		},
+		{
+			`\|`,
+			row{"|"},
+			false,
+		},
+		{
+			`||\||\||`,
+			row{"", "", "|", "|", ""},
+			false,
+		},
+		{
+			`\|\\n\|`,
+			row{"|\\n|"},
+			false,
+		},
+		{
+			`\\|`,
+			row{"\\", ""},
+			false,
+		},
+		{
+			`\n`,
+			row{"\n"},
+			false,
+		},
+		{
+			`a\`,
+			row{"a"},
+			true,
+		},
+		{
+			`\`,
+			row{""},
+			true,
+		},
 	}
 
-	for i, tt := range tests {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			got, err := parseRow(tt.s)
+	for _, tt := range tests {
+		t.Run(tt.s, func(t *testing.T) {
+			got, cont, err := parseRow(tt.s)
 			if err != nil {
 				t.Error(err)
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("want %v, got %v", tt.want, got)
+			if !reflect.DeepEqual(got, tt.wantRow) {
+				t.Errorf("row: want %v, got %v", tt.wantRow, got)
+			}
+
+			if cont != tt.wantMerge {
+				t.Errorf("want merge: want %v, got %v", tt.wantMerge, cont)
 			}
 		})
 	}
@@ -42,15 +97,15 @@ func TestParseRow_error(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			got, err := parseRow(tt)
+			got, cont, err := parseRow(tt)
 			if err == nil {
-				t.Errorf("should be error: got %v", got)
+				t.Errorf("should be error: got %v, cont %v", got, cont)
 			}
 		})
 	}
 }
 
-func TestRow_isDelimiter(t *testing.T) {
+func TestRow_isDelim(t *testing.T) {
 	tests := []struct {
 		row  row
 		want bool
@@ -69,8 +124,8 @@ func TestRow_isDelimiter(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			if tt.row.isDelimiter() != tt.want {
-				t.Fatalf("row.isDelimiter() should be %v", tt.want)
+			if tt.row.isDelim() != tt.want {
+				t.Fatalf("row.isDelim() should be %v", tt.want)
 			}
 		})
 	}

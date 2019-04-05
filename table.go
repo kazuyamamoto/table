@@ -58,7 +58,7 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 		return fmt.Errorf("parsing header: %v", err)
 	}
 
-	if header.columns() == 0 {
+	if header.len() == 0 {
 		return nil
 	}
 
@@ -74,16 +74,16 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 			return nil
 		}
 
-		r, err := parseRow(t)
+		r, _, err := parseRow(t)
 		if err != nil {
 			return fmt.Errorf("parsing table body: %v", err)
 		}
 
-		if r.columns() != header.columns() {
-			return fmt.Errorf("number of columns: header=%v body=%v", header.columns(), r.columns())
+		if r.len() != header.len() {
+			return fmt.Errorf("number of columns: header=%v body=%v", header.len(), r.len())
 		}
 
-		if r.isDelimiter() {
+		if r.isDelim() {
 			continue
 		}
 
@@ -102,19 +102,19 @@ func parseHeader(sc scanner) (row, error) {
 	enterHeader := false
 	var header row
 	for sc.Scan() {
-		t := sc.Text()
-		if t == "" {
+		line := sc.Text()
+		if line == "" {
 			if enterHeader {
 				return header, nil // table end
 			}
 		} else {
 			enterHeader = true
-			r, err := parseRow(t)
+			r, _, err := parseRow(line)
 			if err != nil {
 				return nil, fmt.Errorf("parsing header row: %v", err)
 			}
 
-			if r.isDelimiter() {
+			if r.isDelim() {
 				return header, nil
 			}
 

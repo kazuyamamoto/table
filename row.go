@@ -9,7 +9,8 @@ import (
 type row []string
 
 // parseRow parses s into row.
-func parseRow(s string) (row, error) {
+// Bool return value indicates that the row wants to be merged with the next row.
+func parseRow(s string) (row, bool, error) {
 	var row row
 	escaping := false
 	b := strings.Builder{}
@@ -37,13 +38,13 @@ func parseRow(s string) (row, error) {
 			}
 		default:
 			if escaping {
-				return nil, fmt.Errorf("unsupported escaped character %q", rn)
+				return nil, false, fmt.Errorf("unsupported escaped character %q", rn)
 			}
 			b.WriteRune(rn)
 		}
 	}
 
-	return append(row, trim(b.String())), nil
+	return append(row, trim(b.String())), escaping, nil
 }
 
 // index returns index of cell whose value equals v.
@@ -58,11 +59,11 @@ func (r row) index(v string) int {
 	return -1
 }
 
-// isDelimiter returns true if r is a delimiter row.
+// isDelim returns true if r is a delimiter row.
 // Delimiter row is consist of sequence of '-' and whitespaces.
-func (r row) isDelimiter() bool {
+func (r row) isDelim() bool {
 	for _, e := range r {
-		if strings.IndexFunc(strings.TrimSpace(e), isNotDelimiter) != -1 {
+		if strings.IndexFunc(strings.TrimSpace(e), isNotDelim) != -1 {
 			return false
 		}
 	}
@@ -70,20 +71,21 @@ func (r row) isDelimiter() bool {
 	return true
 }
 
-// columns returns number of columns of r.
-func (r row) columns() int {
+// len returns number of columns of r.
+func (r row) len() int {
 	return len(r)
 }
 
-// merge concatenates two values of same column of r and other
+// merge merges r and other.
+// Values in corresponding column of two rows are merged
 // inserting whitespace between them. Returns non-nil error
 // if number of columns of r and other are different.
 func (r row) merge(other row) error {
-	if r.columns() != other.columns() {
+	if r.len() != other.len() {
 		return fmt.Errorf("number of header columns is different")
 	}
 
-	for i := 0; i < other.columns(); i++ {
+	for i := 0; i < other.len(); i++ {
 		if r[i] == "" {
 			r[i] = other[i]
 		} else if other[i] != "" {
@@ -94,7 +96,7 @@ func (r row) merge(other row) error {
 	return nil
 }
 
-func isNotDelimiter(rn rune) bool {
+func isNotDelim(rn rune) bool {
 	return rn != '-'
 }
 
