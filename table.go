@@ -62,7 +62,8 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 		return nil
 	}
 
-	if err = checkHeader(tStruct, header); err != nil {
+	index, err := indexFieldToColumn(tStruct, header)
+	if err != nil {
 		return fmt.Errorf("checking header: %v", err)
 	}
 
@@ -87,7 +88,7 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 			continue
 		}
 
-		vStruct, err := unmarshalStruct(tStruct, header, r)
+		vStruct, err := unmarshalStruct(tStruct, r, index)
 		if err != nil {
 			return err
 		}
@@ -137,41 +138,35 @@ func (sc scanner) Text() string {
 	return strings.TrimSpace(sc.Scanner.Text())
 }
 
-func checkHeader(tStruct reflect.Type, header row) error {
+func indexFieldToColumn(tStruct reflect.Type, header row) ([]int, error) {
+	ret := make([]int, tStruct.NumField())
 	for i := 0; i < tStruct.NumField(); i++ {
 		tag := tStruct.Field(i).Tag.Get("table")
 		if tag == "" {
 			continue
 		}
 
-		if header.index(tag) == -1 {
-			return fmt.Errorf("column named '%s' not found", tag)
+		index := header.index(tag)
+		if index == -1 {
+			return nil, fmt.Errorf("column '%s' not found in table", tag)
 		}
+
+		ret[i] = index
 	}
-	return nil
+	return ret, nil
 }
 
 // unmarshalStruct unmarshals r into value of tStruct type.
 // When successful, this returns pointer to the value and nil.
 // When failure, this returns zero-value of reflect.Value and non-nil error.
-func unmarshalStruct(tStruct reflect.Type, hdr, r row) (reflect.Value, error) {
+func unmarshalStruct(tStruct reflect.Type, r row, index []int) (reflect.Value, error) {
 	// Not using reflect.Zero for "settability".
 	// See https://blog.golang.org/laws-of-reflection
 	vPointer := reflect.New(tStruct)
 	for fi := 0; fi < vPointer.Elem().NumField(); fi++ {
 		vField := vPointer.Elem().Field(fi)
 		tField := tStruct.Field(fi)
-		tag := tField.Tag.Get("table")
-		if tag == "" { // TODO check can be once
-			continue
-		}
-
-		ti := hdr.index(tag)
-		if ti == -1 {
-			return reflect.Value{}, fmt.Errorf("found no tag named %s", tag)
-		}
-		s := strings.TrimSpace(r[ti])
-
+		s := strings.TrimSpace(r[index[fi]])
 		if reflect.PtrTo(tField.Type).Implements(unmarshalerType) {
 			if err := unmarshalUnmarshalerType(vField, s); err != nil {
 				return reflect.Value{}, err

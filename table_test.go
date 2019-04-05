@@ -291,15 +291,33 @@ abc          | OK           || 302       | 1.234       | x          | 7890      
 }
 
 func BenchmarkUnmarshal(b *testing.B) {
-	s := []byte(`
+	for n := 0; n < b.N; n++ {
+		var tbl []testRow
+		_ = Unmarshal(tableStr, &tbl)
+	}
+}
+
+var tableStr = []byte(`
 string value | custom value || int value  | float value | bool value | uint value | escaped value | 文字列 の 値
 ------------ | ------------ || ---------- | ----------- | ---------- | ---------- | ------------- | ------------
 abc          | OK           || 302        | 1.234       | true       | 7890       | abc\nd        | あいうえお
              | NG           || -0x20      | -5          | F          | 3333       | \|\\n\|       | 日本語
+abc          | OK           || 302        | 1.234       | true       | 7890       | abc\nd        | あいうえお
+             | NG           || -0x20      | -5          | F          | 3333       | \|\\n\|       | 日本語
+abc          | OK           || 302        | 1.234       | true       | 7890       | abc\nd        | あいうえお
+             | NG           || -0x20      | -5          | F          | 3333       | \|\\n\|       | 日本語
+abc          | OK           || 302        | 1.234       | true       | 7890       | abc\nd        | あいうえお
+             | NG           || -0x20      | -5          | F          | 3333       | \|\\n\|       | 日本語
+abc          | OK           || 302        | 1.234       | true       | 7890       | abc\nd        | あいうえお
+             | NG           || -0x20      | -5          | F          | 3333       | \|\\n\|       | 日本語
+abc          | OK           || 302        | 1.234       | true       | 7890       | abc\nd        | あいうえお
+             | NG           || -0x20      | -5          | F          | 3333       | \|\\n\|       | 日本語
+abc          | OK           || 302        | 1.234       | true       | 7890       | abc\nd        | あいうえお
+             | NG           || -0x20      | -5          | F          | 3333       | \|\\n\|       | 日本語
+abc          | OK           || 302        | 1.234       | true       | 7890       | abc\nd        | あいうえお
+             | NG           || -0x20      | -5          | F          | 3333       | \|\\n\|       | 日本語
+abc          | OK           || 302        | 1.234       | true       | 7890       | abc\nd        | あいうえお
+             | NG           || -0x20      | -5          | F          | 3333       | \|\\n\|       | 日本語
+abc          | OK           || 302        | 1.234       | true       | 7890       | abc\nd        | あいうえお
+             | NG           || -0x20      | -5          | F          | 3333       | \|\\n\|       | 日本語
 `)
-
-	for n := 0; n < b.N; n++ {
-		var tbl []testRow
-		_ = Unmarshal(s, &tbl)
-	}
-}
