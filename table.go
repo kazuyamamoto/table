@@ -8,7 +8,6 @@ import (
 	"io"
 	"reflect"
 	"strconv"
-	"strings"
 )
 
 // Unmarshal parses s as table string then sets parsed objects to t.
@@ -144,12 +143,7 @@ func (rs *rowScanner) scan() bool {
 }
 
 func (rs *rowScanner) row() (row, bool, error) {
-	line := strings.TrimSpace(rs.scanner.Text())
-	if line == "" {
-		return nil, false, nil
-	}
-
-	return parseRow(line)
+	return parseRow(rs.scanner.Text())
 }
 
 func indexFieldToColumn(tStruct reflect.Type, header row) ([]int, error) {

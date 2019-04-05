@@ -13,15 +13,24 @@ func TestParseRow(t *testing.T) {
 		wantRow   row
 		wantMerge bool
 	}{
-		{``, row{}, false},
-		{` `, row{}, false},
-		{`  `, row{}, false},
+		{``, nil, false},
+		{` `, nil, false},
+		{`  `, nil, false},
 		{`a`, row{"a"}, false},
 		{`a `, row{"a"}, false},
 		{`a  `, row{"a"}, false},
 		{` a`, row{"a"}, false},
 		{`  a`, row{"a"}, false},
 		{` a `, row{"a"}, false},
+		{`|`, row{"", ""}, false},
+		{` |`, row{"", ""}, false},
+		{`| `, row{"", ""}, false},
+		{`||`, row{"", "", ""}, false},
+		{` ||`, row{"", "", ""}, false},
+		{`| |`, row{"", "", ""}, false},
+		{`|| `, row{"", "", ""}, false},
+		{` || `, row{"", "", ""}, false},
+		{` | | `, row{"", "", ""}, false},
 		{`a|b`, row{"a", "b"}, false},
 		{` a|b`, row{"a", "b"}, false},
 		{`a|b `, row{"a", "b"}, false},
@@ -45,24 +54,27 @@ func TestParseRow(t *testing.T) {
 		{`a\ `, row{"a"}, true},
 		{` a\`, row{"a"}, true},
 		{`a \`, row{"a"}, true},
-		{`\`, row{""}, true},
-		{`\ `, row{""}, true},
-		{` \`, row{""}, true},
+		{`\`, nil, true},
+		{`\ `, nil, true},
+		{` \`, nil, true},
+		{`\\`, row{"\\"}, false},
+		{` \\`, row{"\\"}, false},
+		{`\\ `, row{"\\"}, false},
 	}
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("<%s>", tt.s), func(t *testing.T) {
-			got, cont, err := parseRow(tt.s)
+			gotRow, gotMerge, err := parseRow(tt.s)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			if !reflect.DeepEqual(got, tt.wantRow) {
-				t.Fatalf("row: want %v(len=%d), got %v(len=%d)", tt.wantRow, len(tt.wantRow), got, len(got))
+			if !reflect.DeepEqual(gotRow, tt.wantRow) {
+				t.Fatalf("row: want %v(len=%d), got %v(len=%d)", tt.wantRow, len(tt.wantRow), gotRow, len(gotRow))
 			}
 
-			if cont != tt.wantMerge {
-				t.Fatalf("want merge: want %v, got %v", tt.wantMerge, cont)
+			if gotMerge != tt.wantMerge {
+				t.Fatalf("merge: want %v, got %v", tt.wantMerge, gotMerge)
 			}
 		})
 	}
@@ -73,9 +85,9 @@ func TestParseRow_error(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			got, cont, err := parseRow(tt)
+			gotRow, gotMerge, err := parseRow(tt)
 			if err == nil {
-				t.Fatalf("should be error: got %v, cont %v", got, cont)
+				t.Fatalf("should be error: got row %v, got merge %v", gotRow, gotMerge)
 			}
 		})
 	}

@@ -117,7 +117,7 @@ abc          | \|           || 302       | 1.234       | true       | 7890      
 			}
 
 			if !reflect.DeepEqual(table, tt.want) {
-				t.Fatalf("want %v, got %v", tt.want, table)
+				t.Fatalf("want %v(len=%d), got %v(len=%d)", tt.want, len(tt.want), table, len(table))
 			}
 		})
 	}

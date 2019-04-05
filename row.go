@@ -3,6 +3,7 @@ package table
 import (
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 // row represents a row of table.
@@ -12,6 +13,11 @@ type row []string
 // Returned bool indicates that the row wants to be merged with the next row.
 // Returned row and error are nil if s is empty or spaces.
 func parseRow(s string) (row, bool, error) {
+	s = trim(s)
+	if s == "" {
+		return nil, false, nil
+	}
+
 	var row row
 	escaping := false
 	b := strings.Builder{}
@@ -64,7 +70,7 @@ func (r row) index(v string) int {
 // Delimiter row is consist of sequence of '-' and whitespaces.
 func (r row) isDelim() bool {
 	for _, e := range r {
-		if strings.IndexFunc(strings.TrimSpace(e), notDelim) != -1 {
+		if strings.IndexFunc(trim(e), notDelim) != -1 {
 			return false
 		}
 	}
@@ -72,25 +78,25 @@ func (r row) isDelim() bool {
 	return true
 }
 
-// cols returns number of columns of r.
+// cols returns number of columns.
 func (r row) cols() int {
 	return len(r)
 }
 
-// merge merges r and other.
+// merge merges o into r.
 // Values in corresponding column of two rows are merged
 // inserting whitespace between them. Returns non-nil error
-// if number of columns of r and other are different.
-func (r row) merge(other row) error {
-	if r.cols() != other.cols() {
-		return fmt.Errorf("number of header columns is different")
+// if number of columns of r and o are different.
+func (r row) merge(o row) error {
+	if r.cols() != o.cols() {
+		return fmt.Errorf("number of columns are different")
 	}
 
-	for i := 0; i < other.cols(); i++ {
+	for i := 0; i < o.cols(); i++ {
 		if r[i] == "" {
-			r[i] = other[i]
-		} else if other[i] != "" {
-			r[i] = r[i] + " " + other[i]
+			r[i] = o[i]
+		} else if o[i] != "" {
+			r[i] = r[i] + " " + o[i]
 		}
 	}
 
@@ -101,6 +107,15 @@ func notDelim(rn rune) bool {
 	return rn != '-'
 }
 
+// Not use strings.TrimSpace because '\n' should not be trimmed.
 func trim(s string) string {
-	return strings.Trim(s, " \t")
+	return strings.TrimFunc(s, isSpace)
+}
+
+func isSpace(r rune) bool {
+	if r == '\n' {
+		return false
+	}
+
+	return unicode.IsSpace(r)
 }
