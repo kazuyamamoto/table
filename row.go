@@ -59,11 +59,11 @@ func (r row) index(v string) int {
 	return -1
 }
 
-// isDelimiter returns true if r is a delimiter row.
+// isDelim returns true if r is a delimiter row.
 // Delimiter row is consist of sequence of '-' and whitespaces.
-func (r row) isDelimiter() bool {
+func (r row) isDelim() bool {
 	for _, e := range r {
-		if strings.IndexFunc(strings.TrimSpace(e), isNotDelimiter) != -1 {
+		if strings.IndexFunc(strings.TrimSpace(e), isNotDelim) != -1 {
 			return false
 		}
 	}
@@ -71,8 +71,8 @@ func (r row) isDelimiter() bool {
 	return true
 }
 
-// columns returns number of columns of r.
-func (r row) columns() int {
+// len returns number of columns of r.
+func (r row) len() int {
 	return len(r)
 }
 
@@ -81,11 +81,11 @@ func (r row) columns() int {
 // inserting whitespace between them. Returns non-nil error
 // if number of columns of r and other are different.
 func (r row) merge(other row) error {
-	if r.columns() != other.columns() {
+	if r.len() != other.len() {
 		return fmt.Errorf("number of header columns is different")
 	}
 
-	for i := 0; i < other.columns(); i++ {
+	for i := 0; i < other.len(); i++ {
 		if r[i] == "" {
 			r[i] = other[i]
 		} else if other[i] != "" {
@@ -96,7 +96,7 @@ func (r row) merge(other row) error {
 	return nil
 }
 
-func isNotDelimiter(rn rune) bool {
+func isNotDelim(rn rune) bool {
 	return rn != '-'
 }
 
