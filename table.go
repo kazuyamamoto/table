@@ -180,7 +180,7 @@ func unmarshalStruct(tStruct reflect.Type, row row, indices []int) (reflect.Valu
 	for fi := 0; fi < vPointer.Elem().NumField(); fi++ {
 		vField := vPointer.Elem().Field(fi)
 		tField := tStruct.Field(fi)
-		s := strings.TrimSpace(row[indices[fi]])
+		s := row[indices[fi]]
 		if reflect.PtrTo(tField.Type).Implements(unmarshalerType) {
 			if err := unmarshalUnmarshalerType(vField, s); err != nil {
 				return reflect.Value{}, err

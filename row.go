@@ -9,7 +9,8 @@ import (
 type row []string
 
 // parseRow parses s into row.
-// Bool return value indicates that the row wants to be merged with the next row.
+// Returned bool indicates that the row wants to be merged with the next row.
+// Returned row and error are nil if s is empty or spaces.
 func parseRow(s string) (row, bool, error) {
 	var row row
 	escaping := false
@@ -63,7 +64,7 @@ func (r row) index(v string) int {
 // Delimiter row is consist of sequence of '-' and whitespaces.
 func (r row) isDelim() bool {
 	for _, e := range r {
-		if strings.IndexFunc(strings.TrimSpace(e), isNotDelim) != -1 {
+		if strings.IndexFunc(strings.TrimSpace(e), notDelim) != -1 {
 			return false
 		}
 	}
@@ -96,7 +97,7 @@ func (r row) merge(other row) error {
 	return nil
 }
 
-func isNotDelim(rn rune) bool {
+func notDelim(rn rune) bool {
 	return rn != '-'
 }
 

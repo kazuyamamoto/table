@@ -1,6 +1,7 @@
 package table
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
@@ -12,81 +13,56 @@ func TestParseRow(t *testing.T) {
 		wantRow   row
 		wantMerge bool
 	}{
-		{
-			`a`,
-			row{"a"},
-			false,
-		},
-		{
-			`a `,
-			row{"a"},
-			false,
-		},
-		{
-			`a|b`,
-			row{"a", "b"},
-			false,
-		},
-		{
-			`|a|b`,
-			row{"", "a", "b"},
-			false,
-		},
-		{
-			`a|b|`,
-			row{"a", "b", ""},
-			false,
-		},
-		{
-			`\|`,
-			row{"|"},
-			false,
-		},
-		{
-			`||\||\||`,
-			row{"", "", "|", "|", ""},
-			false,
-		},
-		{
-			`\|\\n\|`,
-			row{"|\\n|"},
-			false,
-		},
-		{
-			`\\|`,
-			row{"\\", ""},
-			false,
-		},
-		{
-			`\n`,
-			row{"\n"},
-			false,
-		},
-		{
-			`a\`,
-			row{"a"},
-			true,
-		},
-		{
-			`\`,
-			row{""},
-			true,
-		},
+		{``, row{}, false},
+		{` `, row{}, false},
+		{`  `, row{}, false},
+		{`a`, row{"a"}, false},
+		{`a `, row{"a"}, false},
+		{`a  `, row{"a"}, false},
+		{` a`, row{"a"}, false},
+		{`  a`, row{"a"}, false},
+		{` a `, row{"a"}, false},
+		{`a|b`, row{"a", "b"}, false},
+		{` a|b`, row{"a", "b"}, false},
+		{`a|b `, row{"a", "b"}, false},
+		{`a |b`, row{"a", "b"}, false},
+		{`a| b`, row{"a", "b"}, false},
+		{`a | b`, row{"a", "b"}, false},
+		{` a | b`, row{"a", "b"}, false},
+		{`a | b `, row{"a", "b"}, false},
+		{`|a|b`, row{"", "a", "b"}, false},
+		{` |a|b`, row{"", "a", "b"}, false},
+		{`a|b|`, row{"a", "b", ""}, false},
+		{`a|b| `, row{"a", "b", ""}, false},
+		{`\|`, row{"|"}, false},
+		{` \|`, row{"|"}, false},
+		{`\| `, row{"|"}, false},
+		{`||\||\||`, row{"", "", "|", "|", ""}, false},
+		{`\|\\n\|`, row{"|\\n|"}, false},
+		{`\\|`, row{"\\", ""}, false},
+		{`\n`, row{"\n"}, false},
+		{`a\`, row{"a"}, true},
+		{`a\ `, row{"a"}, true},
+		{` a\`, row{"a"}, true},
+		{`a \`, row{"a"}, true},
+		{`\`, row{""}, true},
+		{`\ `, row{""}, true},
+		{` \`, row{""}, true},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.s, func(t *testing.T) {
+		t.Run(fmt.Sprintf("<%s>", tt.s), func(t *testing.T) {
 			got, cont, err := parseRow(tt.s)
 			if err != nil {
-				t.Error(err)
+				t.Fatal(err)
 			}
 
 			if !reflect.DeepEqual(got, tt.wantRow) {
-				t.Errorf("row: want %v, got %v", tt.wantRow, got)
+				t.Fatalf("row: want %v(len=%d), got %v(len=%d)", tt.wantRow, len(tt.wantRow), got, len(got))
 			}
 
 			if cont != tt.wantMerge {
-				t.Errorf("want merge: want %v, got %v", tt.wantMerge, cont)
+				t.Fatalf("want merge: want %v, got %v", tt.wantMerge, cont)
 			}
 		})
 	}
@@ -99,7 +75,7 @@ func TestParseRow_error(t *testing.T) {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			got, cont, err := parseRow(tt)
 			if err == nil {
-				t.Errorf("should be error: got %v, cont %v", got, cont)
+				t.Fatalf("should be error: got %v, cont %v", got, cont)
 			}
 		})
 	}
@@ -110,16 +86,16 @@ func TestRow_isDelim(t *testing.T) {
 		row  row
 		want bool
 	}{
-		{[]string{"-"}, true},
-		{[]string{"--"}, true},
-		{[]string{"-a"}, false},
-		{[]string{"-", "-"}, true},
-		{[]string{" - "}, true},
-		{[]string{"a"}, false},
-		{[]string{"a", "-"}, false},
-		{[]string{""}, true},
-		{[]string{"", "-"}, true},
-		{[]string{"", "a"}, false},
+		{row{"-"}, true},
+		{row{"--"}, true},
+		{row{"-a"}, false},
+		{row{"-", "-"}, true},
+		{row{" - "}, true},
+		{row{"a"}, false},
+		{row{"a", "-"}, false},
+		{row{""}, true},
+		{row{"", "-"}, true},
+		{row{"", "a"}, false},
 	}
 
 	for i, tt := range tests {
