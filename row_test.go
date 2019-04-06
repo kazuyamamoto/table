@@ -63,14 +63,14 @@ func TestParseRow(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("<%s>", tt.s), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%v", tt.s), func(t *testing.T) {
 			gotRow, gotMerge, err := parseRow(tt.s)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			if !reflect.DeepEqual(gotRow, tt.wantRow) {
-				t.Fatalf("row: want %v(len=%d), got %v(len=%d)", tt.wantRow, len(tt.wantRow), gotRow, len(gotRow))
+				t.Fatalf("row: want %q, got %q", tt.wantRow, gotRow)
 			}
 
 			if gotMerge != tt.wantMerge {
@@ -81,13 +81,16 @@ func TestParseRow(t *testing.T) {
 }
 
 func TestParseRow_error(t *testing.T) {
-	tests := []string{"\\a", "\\r"}
+	tests := []string{
+		`\a`,
+		`\r`,
+	}
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			gotRow, gotMerge, err := parseRow(tt)
 			if err == nil {
-				t.Fatalf("should be error: got row %v, got merge %v", gotRow, gotMerge)
+				t.Fatalf("should be error: got row %q, got merge %v", gotRow, gotMerge)
 			}
 		})
 	}
