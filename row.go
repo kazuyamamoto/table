@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // row represents a row of table.
@@ -52,6 +53,44 @@ func parseRow(s string) (row, bool, error) {
 	}
 
 	return append(row, trim(b.String())), escaping, nil
+}
+
+// Based on the slide.
+// https://talks.golang.org/2011/lex.slide
+type rowParser struct {
+	pos   int
+	width int
+	input string
+	// results
+	row   row
+	merge bool
+}
+
+func (p *rowParser) parse() error {
+	return nil
+}
+
+func (p *rowParser) next() rune {
+	if p.pos >= len(p.input) {
+		return eof
+	}
+
+	r, s := utf8.DecodeLastRuneInString(p.input[p.pos:])
+	p.pos += s
+	p.width = s
+	return r
+}
+
+const eof rune = -1
+
+func (p *rowParser) backup() {
+	p.pos -= p.width
+}
+
+func (p *rowParser) peek() rune {
+	r := p.next()
+	p.backup()
+	return r
 }
 
 // index returns index of cell whose value equals v.
