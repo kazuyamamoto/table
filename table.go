@@ -51,8 +51,8 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 		return errors.New("value of interface{} is not a pointer of slice of struct")
 	}
 
-	rs := newRowScanner(s)
-	header, err := parseHeader(rs)
+	ts := newTableScanner(s)
+	header, err := parseHeader(ts)
 	if err != nil {
 		return fmt.Errorf("parsing header: %v", err)
 	}
@@ -68,8 +68,8 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 
 	// table body
 	vSlice := vPointer.Elem()
-	for rs.scan() {
-		r, _, err := rs.row()
+	for ts.scan() {
+		r, _, err := ts.row()
 		if err != nil {
 			return fmt.Errorf("parsing table body: %v", err)
 		}
@@ -97,11 +97,11 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 	return nil
 }
 
-func parseHeader(rs *rowScanner) (row, error) {
+func parseHeader(ts *tableScanner) (row, error) {
 	enterHeader := false
 	var header row
-	for rs.scan() {
-		r, _, err := rs.row()
+	for ts.scan() {
+		r, _, err := ts.row()
 		if err != nil {
 			return nil, fmt.Errorf("parsing header row: %v", err)
 		}
@@ -129,21 +129,21 @@ func parseHeader(rs *rowScanner) (row, error) {
 	return header, nil
 }
 
-// rowScanner は row 用の Scanner 。
-type rowScanner struct {
+// tableScanner はテーブル用の bufio.Scanner 。
+type tableScanner struct {
 	scanner *bufio.Scanner
 }
 
-func newRowScanner(r io.Reader) *rowScanner {
-	return &rowScanner{bufio.NewScanner(r)}
+func newTableScanner(r io.Reader) *tableScanner {
+	return &tableScanner{bufio.NewScanner(r)}
 }
 
-func (rs *rowScanner) scan() bool {
-	return rs.scanner.Scan()
+func (ts *tableScanner) scan() bool {
+	return ts.scanner.Scan()
 }
 
-func (rs *rowScanner) row() (row, bool, error) {
-	return parseRow(rs.scanner.Text())
+func (ts *tableScanner) row() (row, bool, error) {
+	return parseRow(ts.scanner.Text())
 }
 
 func indexFieldToColumn(tStruct reflect.Type, header row) ([]int, error) {
