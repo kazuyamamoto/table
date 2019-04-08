@@ -271,7 +271,7 @@ abc          | OK           || 302       | ?           | true       | 7890      
 			`
 string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
 ------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
-abc          | OK           || 302       | 1.234       | x          | 7890       | abc\nd        | あいうえお
+abc          | OK           || 302       | 1.234       | ?          | 7890       | abc\nd        | あいうえお
 `,
 			&[]testRow{},
 		},
