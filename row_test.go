@@ -63,8 +63,8 @@ func TestParseRow(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%v", tt.s), func(t *testing.T) {
-			gotRow, gotMerge, err := parseRow(tt.s)
+		t.Run(fmt.Sprintf("%q", tt.s), func(t *testing.T) {
+			gotRow, gotMerge, err := parseRow2(tt.s)
 			if err != nil {
 				t.Fatal(err)
 			}

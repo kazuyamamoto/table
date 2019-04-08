@@ -1,10 +1,11 @@
 package table
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 )
 
 // row represents a row of table.
@@ -46,7 +47,7 @@ func parseRow(s string) (row, bool, error) {
 			}
 		default:
 			if escaping {
-				return nil, false, fmt.Errorf("unsupported escaped character %q", rn)
+				return nil, false, fmt.Errorf("unsupported escape character %q", rn)
 			}
 			b.WriteRune(rn)
 		}
@@ -55,42 +56,105 @@ func parseRow(s string) (row, bool, error) {
 	return append(row, trim(b.String())), escaping, nil
 }
 
-// Based on the slide.
-// https://talks.golang.org/2011/lex.slide
-type rowParser struct {
-	pos   int
-	width int
-	input string
-	// results
-	row   row
-	merge bool
+func parseRow2(s string) (row, bool, error) {
+	rs := newRowScanner(s)
+	var row row
+	var cont bool
+	var b strings.Builder
+	for {
+		t, v := rs.scan()
+		switch t {
+		case illegal:
+			return nil, false, fmt.Errorf("illegal token %q", v)
+		case eof:
+			row = append(row, strings.TrimSpace(b.String()))
+			return row, cont, nil
+		case text:
+			b.WriteString(v)
+		case pipe:
+			row = append(row, strings.TrimSpace(b.String()))
+			b.Reset()
+		case escBackslash:
+			b.WriteString("\\")
+		case escNewline:
+			b.WriteString("\n")
+		case escPipe:
+			b.WriteString("|")
+		case escEOF:
+			cont = true
+		default:
+			return nil, false, fmt.Errorf("unknown token type %v, value %q", t, v)
+		}
+	}
 }
 
-func (p *rowParser) parse() error {
-	return nil
+type tokenType int
+
+const (
+	illegal tokenType = iota
+	eof
+	text
+	pipe         // |
+	escBackslash // \\
+	escNewline   // \n
+	escPipe      // \|
+	escEOF       // \
+)
+
+type rowScanner struct {
+	reader *bufio.Reader
 }
 
-func (p *rowParser) next() rune {
-	if p.pos >= len(p.input) {
-		return eof
+func newRowScanner(s string) *rowScanner {
+	return &rowScanner{
+		reader: bufio.NewReader(bytes.NewBufferString(s)),
+	}
+}
+
+func (s *rowScanner) scan() (tokenType, string) {
+	r, _, err := s.reader.ReadRune()
+	if err != nil {
+		return eof, ""
 	}
 
-	r, s := utf8.DecodeLastRuneInString(p.input[p.pos:])
-	p.pos += s
-	p.width = s
-	return r
-}
+	if r == '|' {
+		return pipe, "|"
+	}
 
-const eof rune = -1
+	if r == '\\' {
+		r2, _, err := s.reader.ReadRune()
+		if err != nil {
+			_ = s.reader.UnreadRune()
+			return escEOF, "\\"
+		}
 
-func (p *rowParser) backup() {
-	p.pos -= p.width
-}
+		switch r2 {
+		case '\\':
+			return escBackslash, "\\\\"
+		case '|':
+			return escPipe, "\\|"
+		case 'n':
+			return escNewline, "\\n"
+		default:
+			return illegal, "\\" + string(r2)
+		}
+	}
 
-func (p *rowParser) peek() rune {
-	r := p.next()
-	p.backup()
-	return r
+	_ = s.reader.UnreadRune()
+	buf := &bytes.Buffer{}
+	for {
+		r, _, err = s.reader.ReadRune()
+		if err != nil {
+			return text, buf.String()
+		}
+
+		if r == '|' || r == '\\' {
+			_ = s.reader.UnreadRune()
+			return text, buf.String()
+		}
+
+		buf.WriteRune(r)
+	}
 }
 
 // index returns index of cell whose value equals v.

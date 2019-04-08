@@ -231,9 +231,9 @@ abc          | OK           || 302       | 1.234       | true       | 7890      
 		{
 			"different number of columns in header",
 			`
-string | custom ||       | float | bool  |       | escaped | 文字列
-value  |        || int   | value |       | uint  | value   | の
-       | value  || value |       | value | value |           値
+string | custom ||       | float | bool  |       | escaped | 文字列 \_
+value  |        || int   | value |       | uint  | value   | の     \_
+       | value  || value |       | value | value |           値     \_
 ------ | ------ || ----- | ----- | ----- | ----- | ------- | ------------
 abc    | OK     || 302   | 1.234 | true  | 7890  | abc\nd  | あいうえお
 `,
