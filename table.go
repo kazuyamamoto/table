@@ -100,9 +100,8 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 func parseHeader(ts *tableScanner) (row, error) {
 	enterHeader := false
 	var header row
-	var cont bool
 	for ts.scan() {
-		h, c, err := ts.row()
+		h, cont, err := ts.row()
 		if err != nil {
 			return nil, fmt.Errorf("parsing header row: %v", err)
 		}
@@ -121,19 +120,13 @@ func parseHeader(ts *tableScanner) (row, error) {
 		enterHeader = true
 		if header == nil {
 			header = h
-			cont = c
-			if cont {
-				continue
-			}
-			return header, nil
-		}
-
-		if cont {
+		} else {
 			if err = header.merge(h); err != nil {
 				return nil, fmt.Errorf("merging header: %v", err)
 			}
+		}
 
-			cont = c
+		if cont {
 			continue
 		}
 

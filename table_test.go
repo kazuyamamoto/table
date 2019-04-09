@@ -40,7 +40,7 @@ func TestUnmarshal(t *testing.T) {
 		want []testRow
 	}{
 		{
-			"common usage",
+			"basic",
 			`
 string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
 ------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
@@ -102,6 +102,38 @@ value  |        || int   | value |       | uint  | value   | の     \
 string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
 ------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
 abc          | \|           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
+`,
+			[]testRow{
+				{true, 302, 7890, 1.234, "abc", "あいうえお", true, "abc\nd"},
+			},
+		},
+		{
+			"no header delimiter",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
+`,
+			[]testRow{
+				{true, 302, 7890, 1.234, "abc", "あいうえお", true, "abc\nd"},
+			},
+		},
+		{
+			"no header delimiter multi-line header",
+			`
+string | custom || int   | float | bool  | uint  | escaped | 文字列 \
+value  | value  || value | value | value | value | value   | の 値
+abc    | OK     || 302   | 1.234 | true  | 7890  | abc\nd  | あいうえお
+`,
+			[]testRow{
+				{true, 302, 7890, 1.234, "abc", "あいうえお", true, "abc\nd"},
+			},
+		},
+		{
+			"delimiter with continue ignored",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------ \
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお
 `,
 			[]testRow{
 				{true, 302, 7890, 1.234, "abc", "あいうえお", true, "abc\nd"},
@@ -281,7 +313,7 @@ abc          | OK           || 302       | 1.234       | ?          | 7890      
 		t.Run(tt.name, func(t *testing.T) {
 			err := Unmarshal([]byte(tt.s), tt.table)
 
-			//			t.Log(err)
+			// 			t.Log(err)
 
 			if err == nil {
 				t.Fatal("error should be non-nil")
