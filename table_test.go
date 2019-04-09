@@ -93,8 +93,12 @@ string value | custom value || int value | float value | bool value | uint value
 string | custom ||       | float | bool  |       | escaped | 文字列 \
 value  |        || int   | value |       | uint  | value   | の     \
        | value  || value |       | value | value |         | 値
+------ | ------ || ----- | ----- | ----- | ----- | ------- | --------
+abc    | OK     || 302   | 1.234 | true  | 7890  | abc\nd  | あいうえお
 `,
-			nil,
+			[]testRow{
+				{true, 302, 7890, 1.234, "abc", "あいうえお", true, "abc\nd"},
+			},
 		},
 		{
 			"escaping for custom Unmarshaler",
@@ -129,7 +133,7 @@ abc    | OK     || 302   | 1.234 | true  | 7890  | abc\nd  | あいうえお
 			},
 		},
 		{
-			"delimiter with continue ignored",
+			"delimiter with continue token",
 			`
 string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
 ------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------ \
