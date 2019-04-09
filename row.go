@@ -67,12 +67,12 @@ func parseRow2(s string) (row, bool, error) {
 		case illegal:
 			return nil, false, fmt.Errorf("illegal token %q", v)
 		case eof:
-			row = append(row, strings.TrimSpace(b.String()))
+			row = append(row, trim(b.String()))
 			return row, cont, nil
 		case text:
 			b.WriteString(v)
 		case pipe:
-			row = append(row, strings.TrimSpace(b.String()))
+			row = append(row, trim(b.String()))
 			b.Reset()
 		case escBackslash:
 			b.WriteString("\\")
