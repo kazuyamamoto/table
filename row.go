@@ -62,15 +62,15 @@ func parseRow2(s string) (row, bool, error) {
 	var cont bool
 	var b strings.Builder
 	for {
-		t, v := rs.scan()
-		switch t {
+		t := rs.scan()
+		switch t.typ {
 		case illegal:
-			return nil, false, fmt.Errorf("illegal token %q", v)
+			return nil, false, fmt.Errorf("scanning illegal token %v", t)
 		case eof:
 			row = append(row, trim(b.String()))
 			return row, cont, nil
 		case text:
-			b.WriteString(v)
+			b.WriteString(t.value)
 		case pipe:
 			row = append(row, trim(b.String()))
 			b.Reset()
@@ -83,7 +83,7 @@ func parseRow2(s string) (row, bool, error) {
 		case escEOF:
 			cont = true
 		default:
-			return nil, false, fmt.Errorf("unknown token type %v, value %q", t, v)
+			return nil, false, fmt.Errorf("scanning unknown token %v", t)
 		}
 	}
 }
@@ -101,6 +101,38 @@ const (
 	escEOF       // \
 )
 
+func (tt tokenType) String() string {
+	switch tt {
+	case illegal:
+		return "illegal"
+	case eof:
+		return "eof"
+	case text:
+		return "text"
+	case pipe:
+		return "pipe"
+	case escBackslash:
+		return "escape-backslash"
+	case escNewline:
+		return "escape-newline"
+	case escPipe:
+		return "escape-pipe"
+	case escEOF:
+		return "escape-eof"
+	default:
+		return "?"
+	}
+}
+
+type token struct {
+	typ   tokenType
+	value string
+}
+
+func (t *token) String() string {
+	return fmt.Sprintf("%v(%q)", t.typ, t.value)
+}
+
 type rowScanner struct {
 	reader *bufio.Reader
 }
@@ -111,32 +143,32 @@ func newRowScanner(s string) *rowScanner {
 	}
 }
 
-func (s *rowScanner) scan() (tokenType, string) {
+func (s *rowScanner) scan() *token {
 	r, _, err := s.reader.ReadRune()
 	if err != nil {
-		return eof, ""
+		return &token{eof, ""}
 	}
 
 	if r == '|' {
-		return pipe, "|"
+		return &token{pipe, "|"}
 	}
 
 	if r == '\\' {
 		r2, _, err := s.reader.ReadRune()
 		if err != nil {
 			_ = s.reader.UnreadRune()
-			return escEOF, "\\"
+			return &token{escEOF, "\\"}
 		}
 
 		switch r2 {
 		case '\\':
-			return escBackslash, "\\\\"
+			return &token{escBackslash, "\\\\"}
 		case '|':
-			return escPipe, "\\|"
+			return &token{escPipe, "\\|"}
 		case 'n':
-			return escNewline, "\\n"
+			return &token{escNewline, "\\n"}
 		default:
-			return illegal, "\\" + string(r2)
+			return &token{illegal, "\\" + string(r2)}
 		}
 	}
 
@@ -145,12 +177,12 @@ func (s *rowScanner) scan() (tokenType, string) {
 	for {
 		r, _, err = s.reader.ReadRune()
 		if err != nil {
-			return text, buf.String()
+			return &token{text, buf.String()}
 		}
 
 		if r == '|' || r == '\\' {
 			_ = s.reader.UnreadRune()
-			return text, buf.String()
+			return &token{text, buf.String()}
 		}
 
 		buf.WriteRune(r)
