@@ -84,6 +84,7 @@ func TestParseRow_error(t *testing.T) {
 		`\r`,
 		`\ `,
 		`a\ `,
+		`\_`,
 	}
 
 	for i, tt := range tests {

@@ -90,8 +90,8 @@ string value | custom value || int value | float value | bool value | uint value
 		{
 			"multi-line header",
 			`
-string | custom ||       | float | bool  |       | escaped | 文字列
-value  |        || int   | value |       | uint  | value   | の
+string | custom ||       | float | bool  |       | escaped | 文字列 \
+value  |        || int   | value |       | uint  | value   | の     \
        | value  || value |       | value | value |         | 値
 `,
 			nil,
@@ -231,9 +231,9 @@ abc          | OK           || 302       | 1.234       | true       | 7890      
 		{
 			"different number of columns in header",
 			`
-string | custom ||       | float | bool  |       | escaped | 文字列 \_
-value  |        || int   | value |       | uint  | value   | の     \_
-       | value  || value |       | value | value |           値     \_
+string | custom ||       | float | bool  |       | escaped | 文字列 \
+value  |        || int   | value |       | uint  | value   | の     \
+       | value  || value |       | value | value |           値
 ------ | ------ || ----- | ----- | ----- | ----- | ------- | ------------
 abc    | OK     || 302   | 1.234 | true  | 7890  | abc\nd  | あいうえお
 `,
@@ -281,7 +281,7 @@ abc          | OK           || 302       | 1.234       | ?          | 7890      
 		t.Run(tt.name, func(t *testing.T) {
 			err := Unmarshal([]byte(tt.s), tt.table)
 
-			// t.Log(err)
+			t.Log(err)
 
 			if err == nil {
 				t.Fatal("error should be non-nil")

@@ -23,14 +23,13 @@ func parseRow(s string) (row, bool, error) {
 		t := rs.scan()
 		switch t.typ {
 		case illegal:
-			return nil, false, fmt.Errorf("scanning illegal token %v", t)
+			return nil, false, fmt.Errorf("scanned token %v", t)
 		case eof:
 			tr := trim(b.String())
 			if tr == "" && row == nil {
 				return nil, cont, nil
 			}
-			row = append(row, trim(b.String()))
-			return row, cont, nil
+			return append(row, tr), cont, nil
 		case text:
 			b.WriteString(t.value)
 		case pipe:
@@ -45,7 +44,7 @@ func parseRow(s string) (row, bool, error) {
 		case escEOF:
 			cont = true
 		default:
-			return nil, false, fmt.Errorf("scanning unknown token %v", t)
+			return nil, false, fmt.Errorf("scanned token %v", t)
 		}
 	}
 }
@@ -66,23 +65,23 @@ const (
 func (tt tokenType) String() string {
 	switch tt {
 	case illegal:
-		return "illegal"
+		return "ILLEGAL"
 	case eof:
-		return "eof"
+		return "EOF"
 	case text:
-		return "text"
+		return "TEXT"
 	case pipe:
-		return "pipe"
+		return "PIPE"
 	case escBackslash:
-		return "escape-backslash"
+		return "ESCAPE_BACKSLASH"
 	case escNewline:
-		return "escape-newline"
+		return "ESCAPE_NEWLINE"
 	case escPipe:
-		return "escape-pipe"
+		return "ESCAPE_PIPE"
 	case escEOF:
-		return "escape-eof"
+		return "ESCAPE_EOF"
 	default:
-		return "?"
+		return "UNKNOWN"
 	}
 }
 
@@ -92,7 +91,7 @@ type token struct {
 }
 
 func (t *token) String() string {
-	return fmt.Sprintf("%v(%q)", t.typ, t.value)
+	return fmt.Sprintf("%v(%v)", t.typ, t.value)
 }
 
 type rowScanner struct {
