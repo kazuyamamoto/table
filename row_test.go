@@ -62,7 +62,7 @@ func TestParseRow(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("[%s]", tt.s), func(t *testing.T) {
-			gotRow, gotMerge, err := parseRow2(tt.s)
+			gotRow, gotMerge, err := parseRow(tt.s)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -88,7 +88,7 @@ func TestParseRow_error(t *testing.T) {
 
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			gotRow, gotMerge, err := parseRow2(tt)
+			gotRow, gotMerge, err := parseRow(tt)
 			if err == nil {
 				t.Fatalf("should be error: got row %q, got merge %v", gotRow, gotMerge)
 			}

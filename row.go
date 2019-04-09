@@ -12,51 +12,9 @@ import (
 type row []string
 
 // parseRow parses s into row.
-// Returned bool indicates that the row wants to be merged with the next row.
+// Returned bool indicates that the row continues to the next row.
 // Returned row and error are nil if s is empty or spaces.
 func parseRow(s string) (row, bool, error) {
-	s = trim(s)
-	if s == "" {
-		return nil, false, nil
-	}
-
-	var row row
-	escaping := false
-	b := strings.Builder{}
-	for _, rn := range s {
-		switch rn {
-		case '\\':
-			if escaping {
-				b.WriteRune(rn)
-			}
-			escaping = !escaping
-		case 'n':
-			if escaping {
-				b.WriteRune('\n')
-				escaping = false
-			} else {
-				b.WriteRune('n')
-			}
-		case '|':
-			if escaping {
-				b.WriteRune(rn)
-				escaping = false
-			} else {
-				row = append(row, trim(b.String()))
-				b.Reset()
-			}
-		default:
-			if escaping {
-				return nil, false, fmt.Errorf("unsupported escape character %q", rn)
-			}
-			b.WriteRune(rn)
-		}
-	}
-
-	return append(row, trim(b.String())), escaping, nil
-}
-
-func parseRow2(s string) (row, bool, error) {
 	rs := newRowScanner(s)
 	var row row
 	var cont bool
@@ -67,6 +25,10 @@ func parseRow2(s string) (row, bool, error) {
 		case illegal:
 			return nil, false, fmt.Errorf("scanning illegal token %v", t)
 		case eof:
+			tr := trim(b.String())
+			if tr == "" && row == nil {
+				return nil, cont, nil
+			}
 			row = append(row, trim(b.String()))
 			return row, cont, nil
 		case text:
