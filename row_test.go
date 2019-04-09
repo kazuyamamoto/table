@@ -3,7 +3,6 @@ package table
 import (
 	"fmt"
 	"reflect"
-	"strconv"
 	"testing"
 )
 
@@ -87,8 +86,8 @@ func TestParseRow_error(t *testing.T) {
 		`\_`,
 	}
 
-	for i, tt := range tests {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt, func(t *testing.T) {
 			gotRow, gotMerge, err := parseRow(tt)
 			if err == nil {
 				t.Fatalf("should be error: got row %q, got merge %v", gotRow, gotMerge)
@@ -114,8 +113,8 @@ func TestRow_isDelim(t *testing.T) {
 		{row{"", "a"}, false},
 	}
 
-	for i, tt := range tests {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(fmt.Sprint(tt.row), func(t *testing.T) {
 			if tt.row.isDelim() != tt.want {
 				t.Fatalf("row.isDelim() should be %v", tt.want)
 			}
@@ -139,8 +138,8 @@ func TestRow_merge(t *testing.T) {
 		// See parseRow.
 	}
 
-	for i, tt := range tests {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%v <= %v", tt.from, tt.to), func(t *testing.T) {
 			if err := tt.to.merge(tt.from); err != nil {
 				t.Fatal(err)
 			}
@@ -165,8 +164,8 @@ func TestRow_merge_error(t *testing.T) {
 		{row{"a"}, row{}},
 	}
 
-	for i, tt := range tests {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%v <= %v", tt.from, tt.to), func(t *testing.T) {
 			if err := tt.to.merge(tt.from); err == nil {
 				t.Fatal("error should be non-nil")
 			}

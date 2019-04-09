@@ -199,6 +199,10 @@ func (r row) merge(o row) error {
 	return nil
 }
 
+func (r row) String() string {
+	return strings.Join(r, "|")
+}
+
 func notDelim(rn rune) bool {
 	return rn != '-'
 }
