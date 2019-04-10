@@ -62,7 +62,7 @@ ignored lines...
 		{
 			"ignored lines only",
 			`
-    
+
 
 `,
 			nil,
@@ -141,6 +141,23 @@ abc          | OK           || 302       | 1.234       | true       | 7890      
 `,
 			[]testRow{
 				{true, 302, 7890, 1.234, "abc", "あいうえお", true, "abc\nd"},
+			},
+		},
+		{
+			"multi-line body",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+abc          | OK           ||           | 1.234       | true       |            | abc\nd        | あいうえお   \
+def          |              || -0x20     |             |            | 3333       | \|\\n\|       | 日本語
+ghi          | NG           || 302       | 4.56        | false      | 7890       | \n            | いろは
+abc          | OK           ||           |             | true       |            | abc\nd        | あいうえお   \
+def          |              || -0x20     |             |            | 3333       | \|\\n\|       | 日本語 \
+ghi          |              ||           | 1.234       |            |            | \n            | いろは
+`,
+			[]testRow{
+				{true, -32, 3333, 1.234, "abc def", "あいうえお 日本語", true, "abc\nd |\\n|"},
+				{false, 302, 7890, 4.56, "ghi", "いろは", false, "\n"},
+				{true, -32, 3333, 1.234, "abc def ghi", "あいうえお 日本語 いろは", true, "abc\nd |\\n| \n"},
 			},
 		},
 	}
@@ -311,13 +328,24 @@ abc          | OK           || 302       | 1.234       | ?          | 7890      
 `,
 			&[]testRow{},
 		},
+		{
+			"continue but table end",
+			`
+string value | custom value || int value | float value | bool value | uint value | escaped value | 文字列 の 値
+------------ | ------------ || --------- | ----------- | ---------- | ---------- | ------------- | ------------
+abc          | OK           || 302       | 1.234       | true       | 7890       | abc\nd        | あいうえお \
+
+ignored lines...
+`,
+			&[]testRow{},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := Unmarshal([]byte(tt.s), tt.table)
 
-			// 			t.Log(err)
+			// t.Log(err)
 
 			if err == nil {
 				t.Fatal("error should be non-nil")

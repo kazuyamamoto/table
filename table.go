@@ -68,14 +68,16 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 
 	// table body
 	vSlice := vPointer.Elem()
+	var row row
+	var cont bool
 	for ts.scan() {
-		r, _, err := ts.row()
+		r, c, err := ts.row()
 		if err != nil {
 			return fmt.Errorf("table: failed to parse table body: %v", err)
 		}
 
-		if r.cols() == 0 {
-			return nil
+		if r == nil {
+			break
 		}
 
 		if r.cols() != header.cols() {
@@ -86,12 +88,29 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 			continue
 		}
 
+		if cont {
+			if err := row.merge(r); err != nil {
+				return fmt.Errorf("table: failed to merge rows %v", err)
+			}
+			r = row
+		}
+
+		cont = c
+		if c {
+			row = r
+			continue
+		}
+
 		vStruct, err := unmarshalStruct(tStruct, r, indices)
 		if err != nil {
-			return err
+			return fmt.Errorf("table: failed to unmarshal row: %v", err)
 		}
 
 		vSlice.Set(reflect.Append(vSlice, vStruct.Elem()))
+	}
+
+	if cont {
+		return fmt.Errorf("table: row expects to continue to the nex one but not found")
 	}
 
 	return nil
@@ -184,13 +203,13 @@ func unmarshalStruct(tStruct reflect.Type, row row, indices []int) (reflect.Valu
 		s := row[indices[fi]]
 		if reflect.PtrTo(tField.Type).Implements(unmarshalerType) {
 			if err := unmarshalUnmarshalerType(vField, s); err != nil {
-				return reflect.Value{}, err
+				return reflect.Value{}, fmt.Errorf("unmarshaling Unmarshaler: %v", err)
 			}
 			continue
 		}
 
 		if err := unmarshalBasicType(vField, s); err != nil {
-			return reflect.Value{}, err
+			return reflect.Value{}, fmt.Errorf("unmarshaling basic type: %v", err)
 		}
 	}
 
