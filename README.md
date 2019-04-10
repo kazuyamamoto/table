@@ -10,7 +10,6 @@ When table and its struct are as follows:
 ```
 const tableString = `
 string value | int value
------------- | ---------
 hello world  | 302
 こんにちは   | -0x20
 `
@@ -36,13 +35,39 @@ fmt.Println(tbl[1].S) // => こんにちは
 fmt.Println(tbl[1].I) // => -32
 ````
 
-### Customized Unmarshalling
 
-TBD
+### Delimiter
 
-### Escaping
+Delimiter is a row filled with `-` and white spaces.
+It is ignored in unmarshaling.
 
-TBD
+```
+string value | int value
+------------ | ---------
+hello world  | 302
+------------ | ---------
+こんにちは   | -0x20
+```
+
+
+### Custom Unmarshaler
+
+TBD.
+
+
+### Escape Sequence
+
+LF is represented by `\n` in table string.
+`|` is by `\|`.
+`\` is by `\\`. 
+
+```
+string value | int value
+\\\n\|       | 302
+```
+
+String value above equals Go string `"\\\n|"`. 
+
 
 ### Multi-line Rows
 
