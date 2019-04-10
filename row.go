@@ -8,12 +8,12 @@ import (
 	"unicode"
 )
 
-// row represents a row of table.
+// row represents a row in table.
 type row []string
 
-// parseRow parses s into row.
-// Returned bool indicates that the row continues to the next row.
-// Returned row and error are nil if s is empty or spaces.
+// parseRow parses s into a row object.
+// Returned bool indicates that the row expects to continue to the next one.
+// Returned row and error are nil if s is empty or white spaces.
 func parseRow(s string) (row, bool, error) {
 	rs := newRowScanner(s)
 	var row row
@@ -59,7 +59,7 @@ const (
 	escBackslash // \\
 	escNewline   // \n
 	escPipe      // \|
-	escEOF       // \
+	escEOF       // \<EOF>
 )
 
 func (tt tokenType) String() string {
@@ -85,6 +85,7 @@ func (tt tokenType) String() string {
 	}
 }
 
+// token is a token in row string.
 type token struct {
 	typ   tokenType
 	value string
@@ -94,6 +95,7 @@ func (t *token) String() string {
 	return fmt.Sprintf("%v(%v)", t.typ, t.value)
 }
 
+// rowScanner scans tokens in row string.
 type rowScanner struct {
 	reader *bufio.Reader
 }
@@ -104,6 +106,7 @@ func newRowScanner(s string) *rowScanner {
 	}
 }
 
+// scan returns a token in row string.
 func (s *rowScanner) scan() *token {
 	r, _, err := s.reader.ReadRune()
 	if err != nil {
@@ -150,7 +153,7 @@ func (s *rowScanner) scan() *token {
 	}
 }
 
-// index returns index of cell whose value equals v.
+// index returns index of column whose value equals v.
 // Returns -1 if not found.
 func (r row) index(v string) int {
 	for i, e := range r {
@@ -163,7 +166,7 @@ func (r row) index(v string) int {
 }
 
 // isDelim returns true if r is a delimiter row.
-// Delimiter row is consist of sequence of '-' and whitespaces.
+// Delimiter row is consist of sequence of '-' and white spaces.
 func (r row) isDelim() bool {
 	for _, e := range r {
 		if strings.IndexFunc(trim(e), notDelim) != -1 {

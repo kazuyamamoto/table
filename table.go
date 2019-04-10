@@ -11,8 +11,8 @@ import (
 )
 
 // Unmarshal parses s as table string then sets parsed objects to t.
-// If t is not a pointer to slice of struct, Unmarshal returns non-nil error.
-// If parsing an element in s is failed, returns non-nil error.
+// t should be a pointer to slice of struct.
+//
 // Headers are bound to struct field tags.
 // Tag format is as follows:
 //    `table:"column name"`
@@ -22,7 +22,7 @@ func Unmarshal(s []byte, t interface{}) error {
 	return UnmarshalReader(bytes.NewReader(s), t)
 }
 
-// Unmarshaler provides customized unmarshalling method.
+// Unmarshaler provides custom unmarshalling method.
 // An implementation is assumed to be fields of struct which is underlying
 // type of Unmarshal's second parameter.
 // Unmarshal calls implementation's UnmarshalTable.
@@ -38,23 +38,23 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 	// vXxx represents a value. tXxx represents a type.
 	vPointer := reflect.ValueOf(t)
 	if vPointer.Kind() != reflect.Ptr {
-		return errors.New("value of interface{} is not a pointer")
+		return errors.New("table: value of interface{} is not a pointer")
 	}
 
 	tSlice := vPointer.Type().Elem()
 	if tSlice.Kind() != reflect.Slice {
-		return errors.New("value of interface{} is not a pointer of slice")
+		return errors.New("table: value of interface{} is not a pointer of slice")
 	}
 
 	tStruct := tSlice.Elem()
 	if tStruct.Kind() != reflect.Struct {
-		return errors.New("value of interface{} is not a pointer of slice of struct")
+		return errors.New("table: value of interface{} is not a pointer of slice of struct")
 	}
 
 	ts := newTableScanner(s)
 	header, err := parseHeader(ts)
 	if err != nil {
-		return fmt.Errorf("parsing header: %v", err)
+		return fmt.Errorf("table: failed to parse header: %v", err)
 	}
 
 	if header.cols() == 0 {
@@ -63,7 +63,7 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 
 	indices, err := indexFieldToColumn(tStruct, header)
 	if err != nil {
-		return fmt.Errorf("checking header: %v", err)
+		return fmt.Errorf("table: check header: %v", err)
 	}
 
 	// table body
@@ -71,7 +71,7 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 	for ts.scan() {
 		r, _, err := ts.row()
 		if err != nil {
-			return fmt.Errorf("parsing table body: %v", err)
+			return fmt.Errorf("table: failed to parse table body: %v", err)
 		}
 
 		if r.cols() == 0 {
@@ -79,7 +79,7 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 		}
 
 		if r.cols() != header.cols() {
-			return fmt.Errorf("number of columns: header=%v body=%v", header.cols(), r.cols())
+			return fmt.Errorf("table: number of columns: header=%v body=%v", header.cols(), r.cols())
 		}
 
 		if r.isDelim() {
