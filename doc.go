@@ -19,6 +19,6 @@
 // "\\" (\), and "\|" (|).
 //
 // A row ends with "\" indicates it continues to the next row.
-// In above example 5th row and 6th row are merged when unmarshaling.
+// In above example 5th row and 6th row are merged when unmarshalling.
 // So the value of "string" column is "def ghi".
 package table
