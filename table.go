@@ -19,7 +19,7 @@ import (
 // When header corresponds to "column name" is found,
 // element of the column is parsed and the value is set to a struct field of the tag.
 func Unmarshal(s []byte, t interface{}) error {
-	return UnmarshalReader(bytes.NewReader(s), t)
+	return UnmarshalReader2(bytes.NewReader(s), t)
 }
 
 // Unmarshaler provides custom unmarshalling method.
@@ -34,7 +34,7 @@ type Unmarshaler interface {
 
 // UnmarshalReader is like Unmarshal except for parsing data from io.Reader
 // instead of []byte.
-func UnmarshalReader(s io.Reader, t interface{}) error {
+func UnmarshalReader2(s io.Reader, t interface{}) error {
 	// vXxx represents a value. tXxx represents a type.
 	vPointer := reflect.ValueOf(t)
 	if vPointer.Kind() != reflect.Ptr {
@@ -68,37 +68,22 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 
 	// table body
 	vSlice := vPointer.Elem()
-	var row row
-	var cont bool
-	for ts.scan() {
-		r, c, err := ts.row()
+	for {
+		r, err := ts.mergedRow()
+		if err == io.EOF {
+			return nil
+		}
+
 		if err != nil {
 			return fmt.Errorf("table: failed to parse table body: %v", err)
 		}
 
 		if r == nil {
-			break
+			return nil
 		}
 
 		if r.cols() != header.cols() {
 			return fmt.Errorf("table: number of columns: header=%v body=%v", header.cols(), r.cols())
-		}
-
-		if r.isDelim() {
-			continue
-		}
-
-		if cont {
-			if err := row.merge(r); err != nil {
-				return fmt.Errorf("table: failed to merge rows %v", err)
-			}
-			r = row
-		}
-
-		cont = c
-		if c {
-			row = r
-			continue
 		}
 
 		vStruct, err := unmarshalStruct(tStruct, r, indices)
@@ -108,51 +93,23 @@ func UnmarshalReader(s io.Reader, t interface{}) error {
 
 		vSlice.Set(reflect.Append(vSlice, vStruct.Elem()))
 	}
-
-	if cont {
-		return fmt.Errorf("table: row expects to continue to the nex one but not found")
-	}
-
-	return nil
 }
 
 func parseHeader(ts *tableScanner) (row, error) {
-	enterHeader := false
-	var header row
-	for ts.scan() {
-		h, cont, err := ts.row()
+	for {
+		header, err := ts.mergedRow()
+		if err == io.EOF {
+			return nil, nil
+		}
+
 		if err != nil {
-			return nil, fmt.Errorf("parsing header row: %v", err)
+			return nil, fmt.Errorf("get header: %v", err)
 		}
 
-		if h == nil {
-			if enterHeader {
-				return header, nil // table end
-			}
-			continue
+		if header != nil {
+			return header, nil
 		}
-
-		if h.isDelim() {
-			continue
-		}
-
-		enterHeader = true
-		if header == nil {
-			header = h
-		} else {
-			if err = header.merge(h); err != nil {
-				return nil, fmt.Errorf("merging header: %v", err)
-			}
-		}
-
-		if cont {
-			continue
-		}
-
-		return header, nil
 	}
-
-	return header, nil
 }
 
 // tableScanner はテーブル用の bufio.Scanner 。
@@ -162,6 +119,48 @@ type tableScanner struct {
 
 func newTableScanner(r io.Reader) *tableScanner {
 	return &tableScanner{bufio.NewScanner(r)}
+}
+
+func (ts *tableScanner) mergedRow() (row, error) {
+	var row row
+	var cont bool
+	for {
+		if !ts.scan() {
+			if cont {
+				return nil, fmt.Errorf("row continues but the file ended")
+			}
+			return row, io.EOF
+		}
+
+		r, c, err := ts.row()
+		if err != nil {
+			return nil, fmt.Errorf("get row: %v", err)
+		}
+
+		if r == nil {
+			if cont {
+				return nil, fmt.Errorf("row continues but the table ended ")
+			}
+			return row, nil
+		}
+
+		cont = c
+		if r.isDelim() {
+			continue
+		}
+
+		if row == nil {
+			row = r
+		} else {
+			if err := row.merge(r); err != nil {
+				return nil, fmt.Errorf("merging: %v", err)
+			}
+		}
+
+		if !c {
+			return row, nil
+		}
+	}
 }
 
 func (ts *tableScanner) scan() bool {

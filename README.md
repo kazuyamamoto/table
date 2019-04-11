@@ -29,10 +29,10 @@ if err != nil {
         panic(err)
 }
 
-fmt.Println(tbl[0].S) // => hello world
-fmt.Println(tbl[0].I) // => 302
-fmt.Println(tbl[1].S) // => こんにちは
-fmt.Println(tbl[1].I) // => -32
+fmt.Println(tbl[0].S) // hello world
+fmt.Println(tbl[0].I) // 302
+fmt.Println(tbl[1].S) // こんにちは
+fmt.Println(tbl[1].I) // -32
 ````
 
 
@@ -66,7 +66,7 @@ string value | int value
 \\\n\|       | 302
 ```
 
-String value above equals Go string `"\\\n|"`. 
+String value above is `"\\\n|"` in Go string. 
 
 
 ### Multi-line Rows
