@@ -19,7 +19,7 @@ import (
 // When header corresponds to "column name" is found,
 // element of the column is parsed and the value is set to a struct field of the tag.
 func Unmarshal(s []byte, t interface{}) error {
-	return UnmarshalReader2(bytes.NewReader(s), t)
+	return UnmarshalReader(bytes.NewReader(s), t)
 }
 
 // Unmarshaler provides custom unmarshalling method.
@@ -34,7 +34,7 @@ type Unmarshaler interface {
 
 // UnmarshalReader is like Unmarshal except for parsing data from io.Reader
 // instead of []byte.
-func UnmarshalReader2(s io.Reader, t interface{}) error {
+func UnmarshalReader(s io.Reader, t interface{}) error {
 	// vXxx represents a value. tXxx represents a type.
 	vPointer := reflect.ValueOf(t)
 	if vPointer.Kind() != reflect.Ptr {
@@ -121,6 +121,7 @@ func newTableScanner(r io.Reader) *tableScanner {
 	return &tableScanner{bufio.NewScanner(r)}
 }
 
+// mergedRow returns a row. If the row consists of multiple rows, they are merged.
 func (ts *tableScanner) mergedRow() (row, error) {
 	var row row
 	var cont bool
