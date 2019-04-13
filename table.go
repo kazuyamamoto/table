@@ -112,7 +112,7 @@ func parseHeader(ts *tableScanner) (row, error) {
 	}
 }
 
-// tableScanner はテーブル用の bufio.Scanner 。
+// tableScanner is a bufio.Scanner for table string.
 type tableScanner struct {
 	scanner *bufio.Scanner
 }
